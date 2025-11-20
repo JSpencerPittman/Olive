@@ -137,13 +137,10 @@ class ThompsonConstructor(object):
 
         def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
             nonlocal graph
-            inner_concat_req = hndl_concatenation(terms)
+            inner_concat = hndl_concatenation(terms)
+            start, end = inner_concat.start, inner_concat.end
 
-            terms2 = process_nested_terms()
-            inner_concat_any = hndl_quantifier_any(terms2)
-
-            graph.add_edge(inner_concat_req.end, inner_concat_any.start, -1)
-            start, end = inner_concat_req.start, inner_concat_any.end
+            graph.add_edge(end, start, -1)
             return Term(start, end)
 
         def hndl_comparison_or(terms: list[Term]) -> Term:
