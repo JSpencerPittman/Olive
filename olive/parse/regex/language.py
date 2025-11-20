@@ -10,15 +10,31 @@ class SpecialSymbols(Enum):
     RIGHT_PAREN = (1, ")")
 
     @staticmethod
-    def from_symbol(s: str) -> Optional["SpecialSymbols"]:
-        for symbol in SpecialSymbols:
-            if symbol.value[1] == s:
-                return symbol
+    def from_symbol(symbol: str | int) -> Optional["SpecialSymbols"]:
+        comp_idx = 1 if isinstance(symbol, str) else 0
+        for ss in SpecialSymbols:
+            if ss.value[comp_idx] == symbol:
+                return ss
         return None
 
     @staticmethod
     def count() -> int:
         return len(SpecialSymbols)
+
+    @staticmethod
+    def is_special_symbol(symbol: str | int) -> bool:
+        return SpecialSymbols.from_symbol(symbol) is not None
+
+    def __eq__(self, value):
+        if isinstance(value, SpecialSymbols):
+            return super().__eq__(value)
+        elif isinstance(value, str) or isinstance(value, int):
+            v = SpecialSymbols.from_symbol(value)
+            if v is None:
+                return False
+            return super().__eq__(v)
+        else:
+            assert False
 
 
 class Language(object):
