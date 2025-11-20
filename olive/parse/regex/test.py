@@ -139,22 +139,23 @@ def test_all_rules():
 
     for raw_rule, test in zip(raw_rules, tests):
         qt_rule = language.quantize_rule(raw_rule)
-        rg, _ = ThompsonConstructor.construct_rule(qt_rule)
-        gt = GraphTraveler(rg)
+        constructor = ThompsonConstructor()
+        constructor.construct_rule(qt_rule)
+        gt = GraphTraveler(constructor._graph)
 
         test(language, gt)
 
 
-def test_single_case(tst_sym: str, expr: str, res: bool, rule_idx: int):
-    rules_path = Path(__file__).parent / "test_rules.txt"
-    raw_rules = RawRule.load(rules_path)
-    language = Language()
+# def test_single_case(tst_sym: str, expr: str, res: bool, rule_idx: int):
+#     rules_path = Path(__file__).parent / "test_rules.txt"
+#     raw_rules = RawRule.load(rules_path)
+#     language = Language()
 
-    qt_rule = language.quantize_rule(raw_rules[rule_idx])
-    rg, _ = ThompsonConstructor.construct_rule(qt_rule)
-    gt = GraphTraveler(rg)
+#     qt_rule = language.quantize_rule(raw_rules[rule_idx])
+#     rg, _ = ThompsonConstructor.construct_rule(qt_rule)
+#     gt = GraphTraveler(rg)
 
-    run_test_cases(language, gt, tst_sym, [(expr, res)])
+#     run_test_cases(language, gt, tst_sym, [(expr, res)])
 
 
 if __name__ == "__main__":

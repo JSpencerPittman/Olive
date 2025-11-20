@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from olive.parse.regex.rules import QuantizedRule, RawRule
-from olive.parse.regex.language import SpecialSymbols, Language
+from olive.parse.regex.rules import QuantizedRule
+from olive.parse.regex.language import SpecialSymbols
 from olive.parse.regex.graph import Graph
 from enum import Enum
-from pathlib import Path
 
 
 @dataclass
@@ -24,23 +23,25 @@ class ThompsonConstructor(object):
         QUANTIFIER_AT_LEAST_ONE = 4
         COMPARISON_OR = 5
 
-    @staticmethod
-    def construct_rule(rule: QuantizedRule) -> tuple[Graph, Term]:
+    def __init__(self):
+        self._graph = Graph()
+        self._graph.mark_start_node(self._graph.add_node())
+        self._constructed_rules = {}
+
+    def construct_rule(self, rule: QuantizedRule):
         def add_outer_concat(rule: list[int]):
             rule.insert(0, SpecialSymbols.LEFT_PAREN.value[0])
             rule.append(SpecialSymbols.RIGHT_PAREN.value[0])
 
         regex = rule.rule
         add_outer_concat(regex)
-        graph = Graph()
 
-        construction = ThompsonConstructor._construct_subrule(graph, regex)
-        graph.mark_start_node(construction.start)
-        graph.mark_node_association(construction.end, rule.symbol)
-        return graph, construction
+        constructed_rule = self._construct_subrule(regex)
+        self._graph.add_edge(self._graph.start_node, constructed_rule.start, -1)
+        self._graph.mark_node_association(constructed_rule.end, rule.symbol)
+        self._constructed_rules[rule.symbol] = constructed_rule
 
-    @staticmethod
-    def _construct_subrule(graph: Graph, rule: list[int]) -> Term:
+    def _construct_subrule(self, rule: list[int]) -> Term:
         def what_operation() -> ThompsonConstructor.Operation:
             nonlocal rule
 
@@ -63,9 +64,9 @@ class ThompsonConstructor(object):
                     assert False
 
         def create_simple_term(weight: int) -> Term:
-            nonlocal graph
-            src, tgt = graph.add_node(), graph.add_node()
-            graph.add_edge(src, tgt, weight)
+            nonlocal self
+            src, tgt = self._graph.add_node(), self._graph.add_node()
+            self._graph.add_edge(src, tgt, weight)
             return Term(src, tgt)
 
         def process_nested_terms() -> list[Term]:
@@ -104,53 +105,49 @@ class ThompsonConstructor(object):
             # Process each terms
             terms = []
             for gs, gf in groupings:
-                terms.append(
-                    ThompsonConstructor._construct_subrule(
-                        graph, nested_rule[gs : gf + 1]
-                    )
-                )
+                terms.append(self._construct_subrule(nested_rule[gs : gf + 1]))
 
             return terms
 
         def hndl_concatenation(terms: list[Term]) -> Term:
-            nonlocal graph
+            nonlocal self
             for a, b in zip(terms[:-1], terms[1:]):
-                graph.add_edge(a.end, b.start, -1)
+                self._graph.add_edge(a.end, b.start, -1)
             return Term(terms[0].start, terms[-1].end)
 
         def hndl_quantifier_any(terms: list[Term]) -> Term:
-            nonlocal graph
+            nonlocal self
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(start, end, -1)
-            graph.add_edge(end, start, -1)
+            self._graph.add_edge(start, end, -1)
+            self._graph.add_edge(end, start, -1)
             return Term(start, end)
 
         def hndl_quantifier_optional(terms: list[Term]) -> Term:
-            nonlocal graph
+            nonlocal self
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(start, end, -1)
+            self._graph.add_edge(start, end, -1)
             return Term(start, end)
 
         def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
-            nonlocal graph
+            nonlocal self
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(end, start, -1)
+            self._graph.add_edge(end, start, -1)
             return Term(start, end)
 
         def hndl_comparison_or(terms: list[Term]) -> Term:
-            nonlocal graph
-            start = graph.add_node()
-            end = graph.add_node()
+            nonlocal self
+            start = self._graph.add_node()
+            end = self._graph.add_node()
 
             for term in terms:
-                graph.add_edge(start, term.start, -1)
-                graph.add_edge(term.end, end, -1)
+                self._graph.add_edge(start, term.start, -1)
+                self._graph.add_edge(term.end, end, -1)
 
             return Term(start, end)
 
@@ -173,15 +170,3 @@ class ThompsonConstructor(object):
                 return hndl_comparison_or(terms)
 
         assert False
-
-
-if __name__ == "__main__":
-    rules_path = Path(__file__).parent / "rules.txt"
-    graph_path = Path(__file__).parent / "out_graph.txt"
-    raw_rules = RawRule.load(rules_path)
-    language = Language()
-    quantized = [language.quantize_rule(rule) for rule in raw_rules]
-    print(language._quantized_symbols)
-    rg, rt = ThompsonConstructor.construct_rule(quantized[0])
-    rg.write(graph_path)
-    print(rt)
