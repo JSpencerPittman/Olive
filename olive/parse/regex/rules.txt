@@ -1,0 +1,1 @@
+LETTER := ( A B C a b c C B A )
