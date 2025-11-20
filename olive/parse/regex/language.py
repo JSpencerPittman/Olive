@@ -76,6 +76,14 @@ class Language(object):
             [self.quantize_symbol(symbol) for symbol in rule.rule],
         )
 
+    def dequantize_symbol(self, quantized: int) -> Optional[str]:
+        if quantized >= self.num_symbols:
+            return None
+        for s, qt in self._quantized_symbols.items():
+            if qt == quantized:
+                return s
+        assert False
+
 
 if __name__ == "__main__":
     rules_path = Path(__file__).parent / "rules.txt"

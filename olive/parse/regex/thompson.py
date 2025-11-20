@@ -35,6 +35,8 @@ class ThompsonConstructor(object):
         graph = Graph()
 
         construction = ThompsonConstructor._construct_subrule(graph, regex)
+        graph.mark_start_node(construction.start)
+        graph.mark_end_node(construction.end, rule.symbol)
         return graph, construction
 
     @staticmethod
