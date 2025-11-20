@@ -1,1 +1,1 @@
-LETTER := A
+LETTER := ( ( A B A ) | )

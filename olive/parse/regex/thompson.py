@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from olive.parse.regex.rules import QuantizedRule, RawRule
 from olive.parse.regex.language import SpecialSymbols, Language
+from olive.parse.regex.graph import Graph
 from enum import Enum
 from pathlib import Path
 
@@ -14,32 +15,14 @@ class Term(object):
         return f"{self.start} -> {self.end}"
 
 
-class Graph(object):
-    def __init__(self):
-        self._graph = {}
-
-    @property
-    def num_nodes(self) -> int:
-        return len(self._graph)
-
-    def add_edge(self, src: int, tgt: int, choice: int):
-        assert src in self._graph
-        self._graph[src].append((tgt, choice))
-
-    def add_node(self) -> int:
-        self._graph[self.num_nodes] = []
-        return self.num_nodes - 1
-
-    def write(self, path: Path):
-        with open(path, "w") as outfile:
-            for i in range(self.num_nodes):
-                outfile.write(f"{i:<5d}: {self._graph[i]}\n")
-
-
 class ThompsonConstructor(object):
     class Operation(Enum):
         NOT_AN_OPERATION = 0
         CONCATENATION = 1
+        QUANTIFIER_ANY = 2
+        QUANTIFIER_OPTIONAL = 3
+        QUANTIFIER_AT_LEAST_ONE = 4
+        COMPARISON_OR = 5
 
     @staticmethod
     def construct_rule(rule: QuantizedRule) -> tuple[Graph, Term]:
@@ -66,6 +49,14 @@ class ThompsonConstructor(object):
             match rule[-1]:
                 case SpecialSymbols.RIGHT_PAREN:
                     return ThompsonConstructor.Operation.CONCATENATION
+                case SpecialSymbols.ASTERISK:
+                    return ThompsonConstructor.Operation.QUANTIFIER_ANY
+                case SpecialSymbols.QUESTION_MARK:
+                    return ThompsonConstructor.Operation.QUANTIFIER_OPTIONAL
+                case SpecialSymbols.PLUS_SIGN:
+                    return ThompsonConstructor.Operation.QUANTIFIER_AT_LEAST_ONE
+                case SpecialSymbols.PIPE:
+                    return ThompsonConstructor.Operation.COMPARISON_OR
                 case _:
                     assert False
 
@@ -83,8 +74,7 @@ class ThompsonConstructor(object):
             while rule[outer_righ_paren_idx] != SpecialSymbols.RIGHT_PAREN:
                 assert outer_righ_paren_idx >= 1
                 outer_righ_paren_idx -= 1
-            nested_rule_bound = slice(1, outer_righ_paren_idx)
-            nested_rule = rule[nested_rule_bound]
+            nested_rule = rule[1:outer_righ_paren_idx]
 
             # Identify all first-tier terms
             groupings: list[tuple[int, int]] = []
@@ -103,7 +93,8 @@ class ThompsonConstructor(object):
                 elif SpecialSymbols.is_special_symbol(sym):
                     # All other symbols are operands that need to be included in
                     # last added rule.
-                    groupings[-1] = (groupings[-1][0], groupings[-1][1] + 1)
+                    if open_paren_cnt == 0:
+                        groupings[-1] = (groupings[-1][0], groupings[-1][1] + 1)
                 else:
                     if open_paren_cnt == 0:
                         groupings.append((idx, idx))
@@ -120,9 +111,49 @@ class ThompsonConstructor(object):
             return terms
 
         def hndl_concatenation(terms: list[Term]) -> Term:
+            nonlocal graph
             for a, b in zip(terms[:-1], terms[1:]):
                 graph.add_edge(a.end, b.start, -1)
             return Term(terms[0].start, terms[-1].end)
+
+        def hndl_quantifier_any(terms: list[Term]) -> Term:
+            nonlocal graph
+            inner_concat = hndl_concatenation(terms)
+            start, end = inner_concat.start, inner_concat.end
+
+            graph.add_edge(start, end, -1)
+            graph.add_edge(end, start, -1)
+            return Term(start, end)
+
+        def hndl_quantifier_optional(terms: list[Term]) -> Term:
+            nonlocal graph
+            inner_concat = hndl_concatenation(terms)
+            start, end = inner_concat.start, inner_concat.end
+
+            graph.add_edge(start, end, -1)
+            return Term(start, end)
+
+        def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
+            nonlocal graph
+            inner_concat_req = hndl_concatenation(terms)
+
+            terms2 = process_nested_terms()
+            inner_concat_any = hndl_quantifier_any(terms2)
+
+            graph.add_edge(inner_concat_req.end, inner_concat_any.start, -1)
+            start, end = inner_concat_req.start, inner_concat_any.end
+            return Term(start, end)
+
+        def hndl_comparison_or(terms: list[Term]) -> Term:
+            nonlocal graph
+            start = graph.add_node()
+            end = graph.add_node()
+
+            for term in terms:
+                graph.add_edge(start, term.start, -1)
+                graph.add_edge(term.end, end, -1)
+
+            return Term(start, end)
 
         operation = what_operation()
         if operation == ThompsonConstructor.Operation.NOT_AN_OPERATION:
@@ -133,6 +164,14 @@ class ThompsonConstructor(object):
         match operation:
             case ThompsonConstructor.Operation.CONCATENATION:
                 return hndl_concatenation(terms)
+            case ThompsonConstructor.Operation.QUANTIFIER_ANY:
+                return hndl_quantifier_any(terms)
+            case ThompsonConstructor.Operation.QUANTIFIER_OPTIONAL:
+                return hndl_quantifier_optional(terms)
+            case ThompsonConstructor.Operation.QUANTIFIER_AT_LEAST_ONE:
+                return hndl_quantifier_at_least_one(terms)
+            case ThompsonConstructor.Operation.COMPARISON_OR:
+                return hndl_comparison_or(terms)
 
         assert False
 
@@ -143,6 +182,7 @@ if __name__ == "__main__":
     raw_rules = RawRule.load(rules_path)
     language = Language()
     quantized = [language.quantize_rule(rule) for rule in raw_rules]
+    print(language._quantized_symbols)
     rg, rt = ThompsonConstructor.construct_rule(quantized[0])
     rg.write(graph_path)
     print(rt)

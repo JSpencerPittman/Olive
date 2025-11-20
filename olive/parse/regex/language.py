@@ -8,6 +8,10 @@ from olive.parse.regex.rules import QuantizedRule, RawRule
 class SpecialSymbols(Enum):
     LEFT_PAREN = (0, "(")
     RIGHT_PAREN = (1, ")")
+    ASTERISK = (2, "*")
+    QUESTION_MARK = (3, "?")
+    PLUS_SIGN = (4, "+")
+    PIPE = (5, "|")
 
     @staticmethod
     def from_symbol(symbol: str | int) -> Optional["SpecialSymbols"]:
