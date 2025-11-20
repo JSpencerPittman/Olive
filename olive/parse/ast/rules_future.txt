@@ -1,0 +1,3 @@
+STRUCT := struct left_curly_brace VARIABLE_LIST right_curly_brace
+TYPEDEF := TYPE name semicolon
+VARIABLE_LIST := (name name semicolon)

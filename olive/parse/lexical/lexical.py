@@ -1,106 +1,69 @@
-from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
+import re
+import json
+from copy import copy
+
+"""
+Rules
+"""
+
+
+class TokenDefinitions(object):
+    PATH = Path(__file__).parent / "tokens.json"
+
+    def __init__(self):
+        with open(TokenDefinitions.PATH, "r") as infile:
+            loaded_tok_defs = json.load(infile)
+            self.tok_defs = loaded_tok_defs["tokens"]
+            self.keywords = loaded_tok_defs["keywords"]
+        self.name_to_tok_defs_idx = {
+            tok_def["name"]: i for i, tok_def in enumerate(self.tok_defs)
+        }
+        self.all_possible_tokens = [tok_def["name"] for tok_def in self.tok_defs]
+
+    def is_tok_valid_so_far(self, tok_name: str, s: str) -> bool:
+        assert tok_name in self.name_to_tok_defs_idx
+        idx = self.name_to_tok_defs_idx[tok_name]
+        rule = self.tok_defs[idx][
+            (
+                "pattern_so_far"
+                if "pattern_so_far" in self.tok_defs[idx].keys()
+                else "pattern"
+            )
+        ]
+        return self._rule_satisfied(s, rule)
+
+    def is_tok_valid(self, tok_name: str, s: str) -> bool:
+        assert tok_name in self.name_to_tok_defs_idx
+        idx = self.name_to_tok_defs_idx[tok_name]
+        rule = self.tok_defs[idx]["pattern"]
+        return self._rule_satisfied(s, rule)
+
+    def _rule_satisfied(self, s: str, rule: str) -> bool:
+        match = re.match(rule, s)
+        if match is None:
+            return False
+        return match.span() == (0, len(s))
+
 
 """
 Tokens
 """
 
 
-class TokenTypes(Enum):
-    UNKNOWN = "UNKNOWN"
-    NAME = "NAME"
-    INTEGER = "INTEGER"
-
-
-class Token(ABC):
-    def __init__(self, value: str):
+class Token(object):
+    def __init__(self, tok_name: str, value: str):
+        self.tok_name = tok_name
         self.value = value
 
-    @abstractmethod
-    def __repr__(self) -> str: ...
-
-
-class UnknownToken(Token):
-    TYPE = TokenTypes.UNKNOWN
-
     def __repr__(self) -> str:
-        return f"Unknown: '{self.value}'"
+        return f"{self.tok_name}: {self.value}"
 
-
-class NameToken(Token):
-    TYPE = TokenTypes.NAME
-
-    def __repr__(self) -> str:
-        return f"Name: '{self.value}'"
-
-
-class IntegerToken(Token):
-    TYPE = TokenTypes.INTEGER
-
-    def __repr__(self) -> str:
-        return f"Integer: '{self.value}'"
-
-
-Tokens = list[Token]
-
-TOKEN_REGISTRY = {
-    TokenTypes.UNKNOWN: UnknownToken,
-    TokenTypes.NAME: NameToken,
-    TokenTypes.INTEGER: IntegerToken,
-}
 
 """
 Backus-Naur Form
 """
-
-
-class BNFDefinition(ABC):
-    @staticmethod
-    @abstractmethod
-    def is_valid_so_far(s: str) -> bool: ...
-
-    @staticmethod
-    @abstractmethod
-    def is_valid(s: str) -> bool: ...
-
-
-class BNFNameDefinition(BNFDefinition):
-    TYPE: TokenTypes = TokenTypes.NAME
-
-    @staticmethod
-    def is_valid_so_far(s: str) -> bool:
-        if not s[0].isalpha():
-            return False
-        for char in s:
-            if not char.isalnum() and char != "_":
-                return False
-        return True
-
-    @staticmethod
-    def is_valid(s: str) -> bool:
-        return BNFNameDefinition.is_valid_so_far(s)
-
-
-class BNFIntegerDefinition(BNFDefinition):
-    TYPE: TokenTypes = TokenTypes.INTEGER
-
-    @staticmethod
-    def is_valid_so_far(s: str) -> bool:
-        for char in s:
-            if not char.isdigit():
-                return False
-        return True
-
-    @staticmethod
-    def is_valid(s: str) -> bool:
-        return BNFNameDefinition.is_valid_so_far(s)
-
-
-BNF_DEFS_REGISTRY = {
-    TokenTypes.NAME: BNFNameDefinition,
-    TokenTypes.INTEGER: BNFIntegerDefinition,
-}
 
 
 class BNFTracker(object):
@@ -109,11 +72,12 @@ class BNFTracker(object):
         MULTIPLE = 1
         UNIQUE = 2
 
-    def __init__(self):
+    def __init__(self, tok_defs: TokenDefinitions):
         self.started = False
-        self.possible = []
+        self.possible: list[str] = []
         self.buffer = ""
         self.failed_buffer = ""
+        self.tok_defs = tok_defs
 
     @property
     def state(self) -> BNFTrackerState:
@@ -137,16 +101,15 @@ class BNFTracker(object):
 
         # Initialize
         if not self.started:
-            self.possible = [tok_type for tok_type in BNF_DEFS_REGISTRY.keys()]
+            self.possible = copy(self.tok_defs.all_possible_tokens)
             self.started = True
 
         # Filter for still applicable tokens
         appended_buffer = self.buffer + char
         filtered = []
-        for tok_type in self.possible[::-1]:
-            tok_def = BNF_DEFS_REGISTRY[tok_type]
-            if tok_def.is_valid_so_far(appended_buffer):
-                filtered.append(tok_type)
+        for tok_name in self.possible:
+            if self.tok_defs.is_tok_valid_so_far(tok_name, appended_buffer):
+                filtered.append(tok_name)
 
         # Update state
         if len(filtered):
@@ -158,17 +121,26 @@ class BNFTracker(object):
             return False
 
     def get_tok(self, reset: bool = True) -> Token:
-        if len(self.buffer) and self.state == BNFTracker.BNFTrackerState.UNIQUE:
-            assert len(self.possible) == 1
-            token = TOKEN_REGISTRY[self.possible[0]](self.buffer)
-            if reset:
-                self.reset()
+        def resolve_name_token(token: Token):
+            for keyword in self.tok_defs.keywords:
+                if keyword == token.value:
+                    return Token(keyword, token.value)
             return token
-        else:
-            failed = self.failed_buffer
-            if reset:
-                self.reset()
-            return TOKEN_REGISTRY[TokenTypes.UNKNOWN](failed)
+
+        if len(self.buffer) and self.state == BNFTracker.BNFTrackerState.UNIQUE:
+            if self.tok_defs.is_tok_valid(self.possible[0], self.buffer):
+                assert len(self.possible) == 1
+                token = Token(self.possible[0], self.buffer)
+                if token.tok_name == "name":
+                    token = resolve_name_token(token)
+                if reset:
+                    self.reset()
+                return token
+
+        failed = self.failed_buffer
+        if reset:
+            self.reset()
+        return Token("unknown", failed)
 
     def reset(self):
         self.possible.clear()
@@ -185,11 +157,15 @@ Lexical Parser
 class LexicalParser(object):
     def __init__(self):
         self.tokens = []
-        self.tracker = BNFTracker()
+        self.tracker = BNFTracker(TokenDefinitions())
 
     def next(self, char: str):
         if not self.tracker.add_next_char_if_valid(char):
-            self.tokens.append(self.tracker.get_tok())
+            if (next_tok := self.tracker.get_tok()).tok_name not in [
+                "unknown",
+                "whitespace",
+            ]:
+                self.tokens.append(next_tok)
             self.tracker.add_next_char_if_valid(char)
 
     def parse_file(self, path: Path):
@@ -210,7 +186,8 @@ Driver
 if __name__ == "__main__":
     PROJ_DIR = Path(__file__).parent.parent.parent.parent
     OUTPUT_PATH = PROJ_DIR / "output" / "lexen.txt"
-    SAMPLE_PATH = PROJ_DIR / "sample" / "libgit2" / "src" / "libgit2" / "apply.c"
+    SAMPLE_PATH = PROJ_DIR / "sample" / "struct_defs.c"
+    # SAMPLE_PATH = PROJ_DIR / "sample" / "libgit2" / "src" / "libgit2" / "apply.c"
 
     lexy = LexicalParser()
     lexy.parse_file(SAMPLE_PATH)
