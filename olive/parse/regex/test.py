@@ -25,7 +25,7 @@ def run_test_cases(
             qt_char = language.quantize_symbol(char, True)
             assert qt_char is not None
             gt.step(qt_char)
-        r = gt.finished()
+        r = gt.reached_symbols()
 
         if tst_res:
             assert_cond(
@@ -36,9 +36,9 @@ def run_test_cases(
             )
             assert r is not None
             assert_cond(
-                language.dequantize_symbol(r[1]) == test_symbol,
+                language.dequantize_symbol(r) == test_symbol,
                 f"Test Symbol not matched by '{tst_expr}'.",
-                language.dequantize_symbol(r[1]),
+                language.dequantize_symbol(r),
                 test_symbol,
             )
         else:

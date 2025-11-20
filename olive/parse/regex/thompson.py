@@ -36,7 +36,7 @@ class ThompsonConstructor(object):
 
         construction = ThompsonConstructor._construct_subrule(graph, regex)
         graph.mark_start_node(construction.start)
-        graph.mark_end_node(construction.end, rule.symbol)
+        graph.mark_node_association(construction.end, rule.symbol)
         return graph, construction
 
     @staticmethod

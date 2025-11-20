@@ -7,8 +7,7 @@ class Graph(object):
     def __init__(self):
         self._graph = {}
         self._start_node = -1
-        self._end_node = -1
-        self._end_node_assoc = -1
+        self._associations = {}
 
     @property
     def num_nodes(self) -> int:
@@ -17,14 +16,6 @@ class Graph(object):
     @property
     def start_node(self) -> Optional[int]:
         return None if self._start_node == -1 else self._start_node
-
-    @property
-    def end_node(self) -> Optional[int]:
-        return None if self._end_node == -1 else self._end_node
-
-    @property
-    def end_node_assoc(self) -> Optional[int]:
-        return None if self._end_node_assoc == -1 else self._end_node_assoc
 
     def add_edge(self, src: int, tgt: int, choice: int):
         assert src in self._graph
@@ -38,14 +29,18 @@ class Graph(object):
         assert node in self._graph
         self._start_node = node
 
-    def mark_end_node(self, node: int, assoc: int):
+    def mark_node_association(self, node: int, assoc: int):
         assert node in self._graph
-        self._end_node = node
-        self._end_node_assoc = assoc
+        self._associations[node] = assoc
 
     def outgoing_edges(self, node: int) -> list[tuple[int, int]]:
         assert node in self._graph
         return self._graph[node]
+
+    def association(self, node: int) -> Optional[int]:
+        if node in self._associations:
+            return self._associations[node]
+        return None
 
     def write(self, path: Path):
         with open(path, "w") as outfile:
@@ -70,12 +65,23 @@ class GraphTraveler(object):
     def valid_so_far(self) -> bool:
         return len(self._frontier) > 0
 
-    def finished(self) -> Optional[tuple[int, int]]:
-        assert self._graph.end_node is not None
+    def reached_symbols(self) -> Optional[int]:
+        assocs = []
         for node in self._frontier:
-            if node == self._graph.end_node:
-                assert self._graph.end_node_assoc is not None
-                return node, self._graph.end_node_assoc
+            if (assoc := self._graph.association(node)) is not None:
+                assocs.append((node, assoc))
+
+        if len(assocs) > 1:
+            """
+            Return the most specific association. In this context the association with the fewest
+            outgoing edges is considered the most specific.
+            """
+            return sorted(
+                assocs, key=lambda assoc: len(self._graph.outgoing_edges(assoc[0]))
+            )[0][1]
+        elif len(assocs) == 1:
+            return assocs[0][1]
+
         return None
 
     def reset(self):
