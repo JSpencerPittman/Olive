@@ -13,11 +13,21 @@ def assert_cond(condition: bool, msg: str, actual: Any, exp: Any):
 
 
 def run_test_cases(
-    language: Language,
-    gt: GraphTraveler,
     test_symbol: str,
     test_cases: list[tuple[str, bool]],
+    rules: list[str],
 ):
+    language = Language()
+    constructor = ThompsonConstructor()
+    for rule in rules:
+        symbol, terms = rule.split(":=")
+        raw_rule = RawRule(
+            symbol.strip(), [r.strip() for r in terms.strip().split(" ")]
+        )
+        qt_rule = language.quantize_rule(raw_rule)
+        constructor.construct_rule(qt_rule)
+    gt = GraphTraveler(constructor._graph)
+
     for tst_expr, tst_res in test_cases:
         gt.reset()
 
@@ -47,14 +57,15 @@ def run_test_cases(
             )
 
 
-def test_concat(language: Language, gt: GraphTraveler):
+def test_concat():
     TEST_SYMBOL = "TEST_CONCAT"
     TEST_CASES = [("ABC", True), ("A", False), ("ABCA", False)]
+    RULES = ["TEST_CONCAT := A B C"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
-def test_quantifier_any(language: Language, gt: GraphTraveler):
+def test_quantifier_any():
     TEST_SYMBOL = "TEST_QUANTIFIER_ANY"
     TEST_CASES = [
         ("ABC", True),
@@ -64,11 +75,12 @@ def test_quantifier_any(language: Language, gt: GraphTraveler):
         ("ABCABCA", False),
         ("", True),
     ]
+    RULES = ["TEST_QUANTIFIER_ANY := ( A B C ) *"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
-def test_quantifier_optional(language: Language, gt: GraphTraveler):
+def test_quantifier_optional():
     TEST_SYMBOL = "TEST_QUANTIFIER_OPTIONAL"
     TEST_CASES = [
         ("ABC", True),
@@ -77,11 +89,12 @@ def test_quantifier_optional(language: Language, gt: GraphTraveler):
         ("ABCABC", False),
         ("", True),
     ]
+    RULES = ["TEST_QUANTIFIER_OPTIONAL := ( A B C ) ?"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
-def test_quantifier_at_least_one(language: Language, gt: GraphTraveler):
+def test_quantifier_at_least_one():
     TEST_SYMBOL = "TEST_QUANTIFIER_AT_LEAST_ONE"
     TEST_CASES = [
         ("ABC", True),
@@ -90,11 +103,12 @@ def test_quantifier_at_least_one(language: Language, gt: GraphTraveler):
         ("ABCABC", True),
         ("", False),
     ]
+    RULES = ["TEST_QUANTIFIER_AT_LEAST_ONE := ( A B C ) +"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
-def test_comparison_or(language: Language, gt: GraphTraveler):
+def test_comparison_or():
     TEST_SYMBOL = "TEST_COMPARISON_OR"
     TEST_CASES = [
         ("ABC", False),
@@ -106,11 +120,12 @@ def test_comparison_or(language: Language, gt: GraphTraveler):
         ("ABCABC", False),
         ("", False),
     ]
+    RULES = ["TEST_COMPARISON_OR := ( A B C ) |"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
-def test_comparison_nested(language: Language, gt: GraphTraveler):
+def test_comparison_nested():
     TEST_SYMBOL = "TEST_QUANTIFIER_NESTED"
     TEST_CASES = [
         ("AC", True),
@@ -119,43 +134,33 @@ def test_comparison_nested(language: Language, gt: GraphTraveler):
         ("ACACACCCCCCC", True),
         ("", True),
     ]
+    RULES = ["TEST_QUANTIFIER_NESTED := ( ( A C ) * B ) | ( C ) *"]
 
-    run_test_cases(language, gt, TEST_SYMBOL, TEST_CASES)
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
+
+
+def test_symbol_reference():
+    TEST_SYMBOL = "TEST_SYMBOL_REFERENCE"
+    TEST_CASES = [
+        ("ABCD", True),
+        ("AD", False),
+        ("ABCAD", False),
+        ("ABCABCD", True),
+        ("", False),
+    ]
+    RULES = ["TEST_CONCAT := A B C", "TEST_SYMBOL_REFERENCE := ( TEST_CONCAT ) + D"]
+
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
 def test_all_rules():
-    rules_path = Path(__file__).parent / "test_rules.txt"
-    raw_rules = RawRule.load(rules_path)
-    language = Language()
-
-    tests = [
-        test_concat,
-        test_quantifier_any,
-        test_quantifier_optional,
-        test_quantifier_at_least_one,
-        test_comparison_or,
-        test_comparison_nested,
-    ]
-
-    for raw_rule, test in zip(raw_rules, tests):
-        qt_rule = language.quantize_rule(raw_rule)
-        constructor = ThompsonConstructor()
-        constructor.construct_rule(qt_rule)
-        gt = GraphTraveler(constructor._graph)
-
-        test(language, gt)
-
-
-# def test_single_case(tst_sym: str, expr: str, res: bool, rule_idx: int):
-#     rules_path = Path(__file__).parent / "test_rules.txt"
-#     raw_rules = RawRule.load(rules_path)
-#     language = Language()
-
-#     qt_rule = language.quantize_rule(raw_rules[rule_idx])
-#     rg, _ = ThompsonConstructor.construct_rule(qt_rule)
-#     gt = GraphTraveler(rg)
-
-#     run_test_cases(language, gt, tst_sym, [(expr, res)])
+    test_concat()
+    test_quantifier_any()
+    test_quantifier_optional()
+    test_quantifier_at_least_one()
+    test_comparison_or()
+    test_comparison_nested()
+    test_symbol_reference()
 
 
 if __name__ == "__main__":

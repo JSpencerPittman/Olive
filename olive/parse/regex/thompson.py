@@ -154,7 +154,10 @@ class ThompsonConstructor(object):
         operation = what_operation()
         if operation == ThompsonConstructor.Operation.NOT_AN_OPERATION:
             assert len(rule) == 1
-            return create_simple_term(rule[0])
+            if rule[0] in self._constructed_rules:
+                return self._constructed_rules[rule[0]]
+            else:
+                return create_simple_term(rule[0])
 
         terms = process_nested_terms()
         match operation:
