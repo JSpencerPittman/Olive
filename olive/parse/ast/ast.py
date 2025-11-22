@@ -1,4 +1,4 @@
-from olive.parse.lexical.lexical import Token
+from olive.parse.lexer.lexical import Token
 from pathlib import Path
 from queue import Queue
 

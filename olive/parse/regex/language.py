@@ -6,12 +6,12 @@ from olive.parse.regex.rules import QuantizedRule, RawRule
 
 
 class SpecialSymbols(Enum):
-    LEFT_PAREN = (0, "(")
-    RIGHT_PAREN = (1, ")")
-    ASTERISK = (2, "*")
-    QUESTION_MARK = (3, "?")
-    PLUS_SIGN = (4, "+")
-    PIPE = (5, "|")
+    LEFT_PAREN = (0, "(", "left_paren")
+    RIGHT_PAREN = (1, ")", "right_paren")
+    ASTERISK = (2, "*", "asterisk")
+    QUESTION_MARK = (3, "?", "question_mark")
+    PLUS_SIGN = (4, "+", "plus_sign")
+    PIPE = (5, "|", "pipe")
 
     @staticmethod
     def from_symbol(symbol: str | int) -> Optional["SpecialSymbols"]:
@@ -28,6 +28,15 @@ class SpecialSymbols(Enum):
     @staticmethod
     def is_special_symbol(symbol: str | int) -> bool:
         return SpecialSymbols.from_symbol(symbol) is not None
+
+    @staticmethod
+    def literal_from_escape(escape: str):
+        if not escape.startswith("<:") or not escape.endswith(":>"):
+            return None
+        for symbol in SpecialSymbols:
+            if f"<:{symbol.value[2]}:>" == escape:
+                return symbol.value[1]
+        return None
 
     def __eq__(self, value):
         if isinstance(value, SpecialSymbols):
@@ -51,17 +60,27 @@ class Language(object):
 
     @overload
     def quantize_symbol(
-        self, symbol: str, immutable: Literal[False] = False
+        self,
+        symbol: str,
+        treat_special_symbols: bool = True,
+        immutable: Literal[False] = False,
     ) -> int: ...
 
     @overload
     def quantize_symbol(
-        self, symbol: str, immutable: Literal[True] = True
+        self,
+        symbol: str,
+        treat_special_symbols: bool = True,
+        immutable: Literal[True] = True,
     ) -> Optional[int]: ...
 
-    def quantize_symbol(self, symbol: str, immutable: bool = False) -> Optional[int]:
-        if ss := SpecialSymbols.from_symbol(symbol):
+    def quantize_symbol(
+        self, symbol: str, treat_special_symbols: bool = False, immutable: bool = False
+    ) -> Optional[int]:
+        if treat_special_symbols and (ss := SpecialSymbols.from_symbol(symbol)):
             return ss.value[0]
+        if se := SpecialSymbols.literal_from_escape(symbol):
+            symbol = se
         if symbol not in self._quantized_symbols:
             if not immutable:
                 self._quantized_symbols[symbol] = self.num_symbols
@@ -72,8 +91,11 @@ class Language(object):
 
     def quantize_rule(self, rule: RawRule):
         return QuantizedRule(
-            self.quantize_symbol(rule.symbol),
-            [self.quantize_symbol(symbol) for symbol in rule.rule],
+            self.quantize_symbol(rule.symbol, treat_special_symbols=True),
+            [
+                self.quantize_symbol(symbol, treat_special_symbols=True)
+                for symbol in rule.rule
+            ],
         )
 
     def dequantize_symbol(self, quantized: int) -> Optional[str]:

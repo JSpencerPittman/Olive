@@ -29,6 +29,8 @@ class ThompsonConstructor(object):
         self._constructed_rules = {}
 
     def construct_rule(self, rule: QuantizedRule):
+        rule_priority = len(self._constructed_rules)
+
         def add_outer_concat(rule: list[int]):
             rule.insert(0, SpecialSymbols.LEFT_PAREN.value[0])
             rule.append(SpecialSymbols.RIGHT_PAREN.value[0])
@@ -36,12 +38,16 @@ class ThompsonConstructor(object):
         regex = rule.rule
         add_outer_concat(regex)
 
-        constructed_rule = self._construct_subrule(regex)
-        self._graph.add_edge(self._graph.start_node, constructed_rule.start, -1)
-        self._graph.mark_node_association(constructed_rule.end, rule.symbol)
+        constructed_rule = self._construct_subrule(regex, rule_priority)
+        self._graph.add_edge(
+            self._graph.start_node, constructed_rule.start, -1, rule_priority
+        )
+        self._graph.mark_node_association(
+            constructed_rule.end, rule.symbol, rule_priority
+        )
         self._constructed_rules[rule.symbol] = constructed_rule
 
-    def _construct_subrule(self, rule: list[int]) -> Term:
+    def _construct_subrule(self, rule: list[int], rule_priority: int) -> Term:
         def what_operation() -> ThompsonConstructor.Operation:
             nonlocal rule
 
@@ -66,7 +72,7 @@ class ThompsonConstructor(object):
         def create_simple_term(weight: int) -> Term:
             nonlocal self
             src, tgt = self._graph.add_node(), self._graph.add_node()
-            self._graph.add_edge(src, tgt, weight)
+            self._graph.add_edge(src, tgt, weight, rule_priority)
             return Term(src, tgt)
 
         def process_nested_terms() -> list[Term]:
@@ -105,14 +111,16 @@ class ThompsonConstructor(object):
             # Process each terms
             terms = []
             for gs, gf in groupings:
-                terms.append(self._construct_subrule(nested_rule[gs : gf + 1]))
+                terms.append(
+                    self._construct_subrule(nested_rule[gs : gf + 1], rule_priority)
+                )
 
             return terms
 
         def hndl_concatenation(terms: list[Term]) -> Term:
             nonlocal self
             for a, b in zip(terms[:-1], terms[1:]):
-                self._graph.add_edge(a.end, b.start, -1)
+                self._graph.add_edge(a.end, b.start, -1, rule_priority)
             return Term(terms[0].start, terms[-1].end)
 
         def hndl_quantifier_any(terms: list[Term]) -> Term:
@@ -120,8 +128,8 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(start, end, -1)
-            self._graph.add_edge(end, start, -1)
+            self._graph.add_edge(start, end, -1, rule_priority)
+            self._graph.add_edge(end, start, -1, rule_priority)
             return Term(start, end)
 
         def hndl_quantifier_optional(terms: list[Term]) -> Term:
@@ -129,7 +137,7 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(start, end, -1)
+            self._graph.add_edge(start, end, -1, rule_priority)
             return Term(start, end)
 
         def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
@@ -137,7 +145,7 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(end, start, -1)
+            self._graph.add_edge(end, start, -1, rule_priority)
             return Term(start, end)
 
         def hndl_comparison_or(terms: list[Term]) -> Term:
@@ -146,8 +154,8 @@ class ThompsonConstructor(object):
             end = self._graph.add_node()
 
             for term in terms:
-                self._graph.add_edge(start, term.start, -1)
-                self._graph.add_edge(term.end, end, -1)
+                self._graph.add_edge(start, term.start, -1, rule_priority)
+                self._graph.add_edge(term.end, end, -1, rule_priority)
 
             return Term(start, end)
 

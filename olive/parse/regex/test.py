@@ -2,7 +2,6 @@ from olive.parse.regex.rules import RawRule
 from olive.parse.regex.language import Language
 from olive.parse.regex.thompson import ThompsonConstructor
 from olive.parse.regex.graph import GraphTraveler
-from pathlib import Path
 from typing import Any
 
 
@@ -26,13 +25,13 @@ def run_test_cases(
         )
         qt_rule = language.quantize_rule(raw_rule)
         constructor.construct_rule(qt_rule)
-    gt = GraphTraveler(constructor._graph)
+    gt = GraphTraveler(constructor._graph, len(rules))
 
     for tst_expr, tst_res in test_cases:
         gt.reset()
 
         for char in tst_expr:
-            qt_char = language.quantize_symbol(char, True)
+            qt_char = language.quantize_symbol(char)
             assert qt_char is not None
             gt.step(qt_char)
         r = gt.reached_symbols()
@@ -153,6 +152,18 @@ def test_symbol_reference():
     run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
 
 
+def test_escapes():
+    TEST_SYMBOL = "TEST_ESCAPE"
+    TEST_CASES = [
+        ("<:asterisk:>", False),
+        ("*", True),
+        ("", False),
+    ]
+    RULES = ["TEST_ESCAPE := <:asterisk:>"]
+
+    run_test_cases(TEST_SYMBOL, TEST_CASES, RULES)
+
+
 def test_all_rules():
     test_concat()
     test_quantifier_any()
@@ -161,6 +172,7 @@ def test_all_rules():
     test_comparison_or()
     test_comparison_nested()
     test_symbol_reference()
+    test_escapes()
 
 
 if __name__ == "__main__":
