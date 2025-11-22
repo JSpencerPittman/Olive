@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from time import time
 
 from olive.parse.regex.graph import GraphTraveler
 from olive.parse.regex.language import Language
@@ -70,10 +71,14 @@ Driver
 """
 
 if __name__ == "__main__":
-    RULES_PATH = Path(__file__).parent / "sample_rules.txt"
+    start = time()
+    RULES_PATH = Path(__file__).parent / "rules.txt"
     OUTPUT_PATH = Path(__file__).parent / "lexen.txt"
-    SAMPLE_PATH = Path(__file__).parent / "sample.c"
+    SAMPLE_PATH = Path(__file__).parent / "apply.c"
 
     lexy = LexicalParser(RULES_PATH)
     lexy.parse_file(SAMPLE_PATH)
     lexy.save_tokens(OUTPUT_PATH)
+    end = time()
+
+    print(f"Duration: {end - start:.2f} Seconds")

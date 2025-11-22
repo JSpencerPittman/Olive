@@ -1,6 +1,27 @@
 # Characters
 LETTER := ( A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z ) |
 NUMBER := ( 0 1 2 3 4 5 6 7 8 9 ) |
-ASTERISK := / <:asterisk:>
+ASTERISK := <:asterisk:>
+DOUBLE_QUOTE := "
+LEFT_CURLY_BRACE := {
+RIGHT_CURLY_BRACE := }
+SEMICOLON := ;
+LEFT_PAREN := <:left_paren:>
+RIGHT_PAREN := <:right_paren:>
+
+# Comments
+COMMENT_MULTI_START := / <:asterisk:>
+COMMENT_MULTI_END := <:asterisk:> /
+
 # Generic Patterns
 NAME := LETTER ( ( LETTER NUMBER _ ) | ) *
+
+# Keywords
+TYPEDEF := t y p e d e f
+STRUCT := s t r u c t
+STATIC := s t a t i c
+CONST := c o n s t
+
+# Macros
+INCLUDE := # i n c l u d e
+DEFINE := # d e f i n e
