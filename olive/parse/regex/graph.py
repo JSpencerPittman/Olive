@@ -7,7 +7,7 @@ class Graph(object):
     def __init__(self):
         self._graph = {}
         self._start_node = -1
-        self._associations = {}
+        self._end_node = -1
 
     @property
     def num_nodes(self) -> int:
@@ -17,9 +17,9 @@ class Graph(object):
     def start_node(self) -> Optional[int]:
         return None if self._start_node == -1 else self._start_node
 
-    def add_edge(self, src: int, tgt: int, weight: int, priority: int):
+    def add_edge(self, src: int, tgt: int, weight: int):
         assert src in self._graph
-        self._graph[src].append((tgt, weight, priority))
+        self._graph[src].append((tgt, weight))
 
     def add_node(self) -> int:
         self._graph[self.num_nodes] = []
@@ -29,18 +29,13 @@ class Graph(object):
         assert node in self._graph
         self._start_node = node
 
-    def mark_node_association(self, node: int, assoc: int, priority: int):
+    def mark_end_node(self, node: int):
         assert node in self._graph
-        self._associations[node] = (assoc, priority)
+        self._end_node = node
 
-    def outgoing_edges(self, node: int, priority: int) -> list[tuple[int, int]]:
+    def outgoing_edges(self, node: int) -> list[tuple[int, int]]:
         assert node in self._graph
-        return [(src, tgt) for src, tgt, p in self._graph[node] if priority >= p]
-
-    def association(self, node: int, rule_priority: int) -> Optional[int]:
-        if node in self._associations and self._associations[node][1] == rule_priority:
-            return self._associations[node][0]
-        return None
+        return self._graph[node]
 
     def write(self, path: Path):
         with open(path, "w") as outfile:
@@ -49,9 +44,8 @@ class Graph(object):
 
 
 class GraphTraveler(object):
-    def __init__(self, graph: Graph, num_rules: int):
+    def __init__(self, graph: Graph):
         self._graph = graph
-        self._num_rules = num_rules
         assert graph.start_node is not None
         self.reset()
 
@@ -68,35 +62,16 @@ class GraphTraveler(object):
         self._can_revert = False
 
     def valid_so_far(self) -> bool:
-        for rule_idx in range(self._num_rules):
-            if len(self._frontier[rule_idx]):
+        return len(self._frontier) > 0
+
+    def is_finished(self) -> bool:
+        for node in self._frontier:
+            if node == self._graph._end_node:
                 return True
         return False
 
-    def reached_symbols(self) -> Optional[int]:
-        assocs = []
-        for rule_priority, rule_frontier in enumerate(self._frontier):
-            for node in rule_frontier:
-                if (assoc := self._graph.association(node, rule_priority)) is not None:
-                    assocs.append((node, rule_priority, assoc))
-
-        if len(assocs) > 1:
-            """
-            Return the most specific association. In this context the association with the fewest
-            outgoing edges is considered the most specific.
-            """
-            return sorted(
-                assocs, key=lambda assoc: len(self._graph.outgoing_edges(*assoc[:2]))
-            )[0][2]
-        elif len(assocs) == 1:
-            return assocs[0][2]
-
-        return None
-
     def reset(self):
-        self._frontier = [
-            set([self._graph.start_node]) for idx in range(self._num_rules)
-        ]
+        self._frontier = set([self._graph.start_node])
         self._find_zero_weight_neighborhood()
 
         self._prev_frontier = None
@@ -106,30 +81,28 @@ class GraphTraveler(object):
         def is_empty_edge(weight: int) -> bool:
             return weight == -1
 
-        for rule_pri in range(self._num_rules):
-            expansion = copy(set(self._frontier[rule_pri]))
-            frontier = copy(set(self._frontier[rule_pri]))
-            explored = set()
+        expansion = copy(set(self._frontier))
+        frontier = copy(set(self._frontier))
+        explored = set()
 
-            while len(frontier):
-                node = frontier.pop()
-                explored.add(node)
-                for neighbor, w in self._graph.outgoing_edges(node, rule_pri):
-                    if is_empty_edge(w) and neighbor not in explored:
-                        frontier.add(neighbor)
-                        expansion.add(neighbor)
+        while len(frontier):
+            node = frontier.pop()
+            explored.add(node)
+            for neighbor, w in self._graph.outgoing_edges(node):
+                if is_empty_edge(w) and neighbor not in explored:
+                    frontier.add(neighbor)
+                    expansion.add(neighbor)
 
-            self._frontier[rule_pri] = expansion
+        self._frontier = expansion
 
     def _take_step(self, weight: int):
-        for rule_pri in range(self._num_rules):
-            expansion = set()
-            explored = set()
+        expansion = set()
+        explored = set()
 
-            for node in self._frontier[rule_pri]:
-                explored.add(node)
-                for neighbor, w in self._graph.outgoing_edges(node, rule_pri):
-                    if w == weight and neighbor not in explored:
-                        expansion.add(neighbor)
+        for node in self._frontier:
+            explored.add(node)
+            for neighbor, w in self._graph.outgoing_edges(node):
+                if w == weight and neighbor not in explored:
+                    expansion.add(neighbor)
 
-            self._frontier[rule_pri] = expansion
+        self._frontier = expansion

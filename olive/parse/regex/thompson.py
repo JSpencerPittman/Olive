@@ -23,13 +23,9 @@ class ThompsonConstructor(object):
         QUANTIFIER_AT_LEAST_ONE = 4
         COMPARISON_OR = 5
 
-    def __init__(self):
-        self._graph = Graph()
-        self._graph.mark_start_node(self._graph.add_node())
-        self._constructed_rules = {}
-
-    def construct_rule(self, rule: QuantizedRule):
-        rule_priority = len(self._constructed_rules)
+    @staticmethod
+    def construct_rule(rule: QuantizedRule) -> Graph:
+        graph = Graph()
 
         def add_outer_concat(rule: list[int]):
             rule.insert(0, SpecialSymbols.LEFT_PAREN.value[0])
@@ -38,16 +34,14 @@ class ThompsonConstructor(object):
         regex = rule.rule
         add_outer_concat(regex)
 
-        constructed_rule = self._construct_subrule(regex, rule_priority)
-        self._graph.add_edge(
-            self._graph.start_node, constructed_rule.start, -1, rule_priority
-        )
-        self._graph.mark_node_association(
-            constructed_rule.end, rule.symbol, rule_priority
-        )
-        self._constructed_rules[rule.symbol] = constructed_rule
+        constructed_rule = ThompsonConstructor._construct_subrule(graph, regex)
+        graph.mark_start_node(constructed_rule.start)
+        graph.mark_end_node(constructed_rule.end)
 
-    def _construct_subrule(self, rule: list[int], rule_priority: int) -> Term:
+        return graph
+
+    @staticmethod
+    def _construct_subrule(graph: Graph, rule: list[int]) -> Term:
         def what_operation() -> ThompsonConstructor.Operation:
             nonlocal rule
 
@@ -70,13 +64,13 @@ class ThompsonConstructor(object):
                     assert False
 
         def create_simple_term(weight: int) -> Term:
-            nonlocal self
-            src, tgt = self._graph.add_node(), self._graph.add_node()
-            self._graph.add_edge(src, tgt, weight, rule_priority)
+            nonlocal graph
+            src, tgt = graph.add_node(), graph.add_node()
+            graph.add_edge(src, tgt, weight)
             return Term(src, tgt)
 
         def process_nested_terms() -> list[Term]:
-            nonlocal rule
+            nonlocal graph, rule
 
             # Determine aggregate bounds of nested terms
             outer_righ_paren_idx = len(rule) - 1
@@ -112,60 +106,63 @@ class ThompsonConstructor(object):
             terms = []
             for gs, gf in groupings:
                 terms.append(
-                    self._construct_subrule(nested_rule[gs : gf + 1], rule_priority)
+                    ThompsonConstructor._construct_subrule(
+                        graph, nested_rule[gs : gf + 1]
+                    )
                 )
 
             return terms
 
         def hndl_concatenation(terms: list[Term]) -> Term:
-            nonlocal self
+            nonlocal graph
             for a, b in zip(terms[:-1], terms[1:]):
-                self._graph.add_edge(a.end, b.start, -1, rule_priority)
+                graph.add_edge(a.end, b.start, -1)
             return Term(terms[0].start, terms[-1].end)
 
         def hndl_quantifier_any(terms: list[Term]) -> Term:
-            nonlocal self
+            nonlocal graph
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(start, end, -1, rule_priority)
-            self._graph.add_edge(end, start, -1, rule_priority)
+            graph.add_edge(
+                start,
+                end,
+                -1,
+            )
+            graph.add_edge(end, start, -1)
             return Term(start, end)
 
         def hndl_quantifier_optional(terms: list[Term]) -> Term:
-            nonlocal self
+            nonlocal graph
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(start, end, -1, rule_priority)
+            graph.add_edge(start, end, -1)
             return Term(start, end)
 
         def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
-            nonlocal self
+            nonlocal graph
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            self._graph.add_edge(end, start, -1, rule_priority)
+            graph.add_edge(end, start, -1)
             return Term(start, end)
 
         def hndl_comparison_or(terms: list[Term]) -> Term:
-            nonlocal self
-            start = self._graph.add_node()
-            end = self._graph.add_node()
+            nonlocal graph
+            start = graph.add_node()
+            end = graph.add_node()
 
             for term in terms:
-                self._graph.add_edge(start, term.start, -1, rule_priority)
-                self._graph.add_edge(term.end, end, -1, rule_priority)
+                graph.add_edge(start, term.start, -1)
+                graph.add_edge(term.end, end, -1)
 
             return Term(start, end)
 
         operation = what_operation()
         if operation == ThompsonConstructor.Operation.NOT_AN_OPERATION:
             assert len(rule) == 1
-            if rule[0] in self._constructed_rules:
-                return self._constructed_rules[rule[0]]
-            else:
-                return create_simple_term(rule[0])
+            return create_simple_term(rule[0])
 
         terms = process_nested_terms()
         match operation:

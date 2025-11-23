@@ -1,0 +1,27 @@
+# Comments
+COMMENT_MULTI_START := / <:asterisk:>
+COMMENT_MULTI_END := <:asterisk:> /
+SPECIAL-RULE := PURGE-COMMENTS
+
+# Identifiers
+IDENTIFIER := NONDIGIT ( ( NONDIGIT DIGIT _ ) | ) *
+SPECIAL-RULE := CONSOLIDATE-IDENTIFIERS
+
+# Numbers
+INTEGER := ( DIGIT ) +
+FLOAT := DIGIT . ( DIGIT ) *
+
+# Cleanup
+SPECIAL-RULE := PURGE-WHITESPACE
+
+# Keywords
+SPECIAL-RULE := RESOLVE-KEYWORDS
+
+# Macros
+MACRO__INCLUDE := # KEYWORD__INCLUDE " ( ( IDENTIFIER . / \ ) | ) + "
+
+# Array
+ARRAY_SPECIFIER := [ ( ( IDENTIFIER INTEGER ) | ) * ]
+
+# Variable
+VARIABLE := ( KEYWORD__STATIC ) ? ( KEYWORD__CONST ) ? IDENTIFIER ( <:asterisk:> ) * IDENTIFIER ( ARRAY_SPECIFIER ) ? ;

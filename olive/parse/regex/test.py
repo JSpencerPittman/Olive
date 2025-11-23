@@ -17,15 +17,15 @@ def run_test_cases(
     rules: list[str],
 ):
     language = Language()
-    constructor = ThompsonConstructor()
+    rule_travelers = []
     for rule in rules:
         symbol, terms = rule.split(":=")
         raw_rule = RawRule(
             symbol.strip(), [r.strip() for r in terms.strip().split(" ")]
         )
         qt_rule = language.quantize_rule(raw_rule)
-        constructor.construct_rule(qt_rule)
-    gt = GraphTraveler(constructor._graph, len(rules))
+        rule_graph = ThompsonConstructor.construct_rule(qt_rule)
+        rule_travelers.append(GraphTraveler(rule_graph))
 
     for tst_expr, tst_res in test_cases:
         gt.reset()

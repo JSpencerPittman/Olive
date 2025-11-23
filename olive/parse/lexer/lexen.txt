@@ -1,1 +1,32 @@
-ASTERISK: *
+STRUCT
+	KEYWORD__STRUCT: struct
+	{: {
+	VARIABLE
+		IDENTIFIER: git_pool
+		IDENTIFIER: pool
+		;: ;
+	VARIABLE
+		IDENTIFIER: git_vector
+		IDENTIFIER: lines
+		;: ;
+	}: }
+	IDENTIFIER: patch_image
+
+STRUCT
+	KEYWORD__STRUCT: struct
+	{: {
+	VARIABLE
+		IDENTIFIER: git_apply_options
+		IDENTIFIER: opts
+		;: ;
+	VARIABLE
+		IDENTIFIER: size_t
+		IDENTIFIER: skipped_new_lines
+		;: ;
+	VARIABLE
+		IDENTIFIER: size_t
+		IDENTIFIER: skipped_old_lines
+		;: ;
+	}: }
+	IDENTIFIER: apply_hunks_ctx
+
