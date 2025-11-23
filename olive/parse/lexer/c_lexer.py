@@ -51,6 +51,9 @@ class CLexer(Lexer):
             "RESOLVE-KEYWORDS", self._special_rule__resolve_keywords
         )
         self.register_special_rule("PURGE-COMMENTS", self._special_rule__purge_comments)
+        self.register_special_rule(
+            "CONSOLIDATE-ARRAY-BRACKETS", self._special_rule__consolidate_array_brackets
+        )
 
     def _special_rule__consolidate_identifiers(self):
         identifier_symbol = self._language.quantize_symbol("IDENTIFIER")
@@ -73,19 +76,9 @@ class CLexer(Lexer):
                 self._data[idx] = QuantizedASTNode(symbol, node.value, None)
 
     def _special_rule__purge_comments(self):
-        groupings = []
-        start_idx = -1
-
-        start_symbol, end_symbol = self._language.quantize_symbol(
-            "COMMENT_MULTI_START"
-        ), self._language.quantize_symbol("COMMENT_MULTI_END")
-
-        for idx, node in enumerate(self._data):
-            if node.symbol == start_symbol:
-                start_idx = idx
-            elif node.symbol == end_symbol and start_idx >= 0:
-                groupings.append((start_idx, idx))
-                start_idx = -1
+        groupings = self._special_rule_utility__find_open_close_groups(
+            "COMMENT_MULTI_START", "COMMENT_MULTI_END"
+        )
 
         last_idx = 0
         processed = []
@@ -95,3 +88,43 @@ class CLexer(Lexer):
         processed.extend(self._data[last_idx:])
 
         self._data = processed
+
+    def _special_rule__consolidate_array_brackets(self):
+        groupings = self._special_rule_utility__find_open_close_groups("[", "]")
+        QT_ARRAY_CONSOLIDATED = self._language.quantize_symbol(
+            "ARRAY_BRACKET_CONSOLIDATED"
+        )
+
+        last_idx = 0
+        processed = []
+        for s, e in groupings:
+            processed.extend(self._data[last_idx:s])
+            if s + 1 != e:
+                processed.append(
+                    QuantizedASTNode(
+                        QT_ARRAY_CONSOLIDATED,
+                        "".join([node.serialize("") for node in self._data[s + 1 : e]]),
+                    )
+                )
+            last_idx = e + 1
+        processed.extend(self._data[last_idx:])
+
+        self._data = processed
+
+    def _special_rule_utility__find_open_close_groups(
+        self, start_sym: str, end_sym: str
+    ) -> list[tuple[int, int]]:
+        groupings = []
+        start_idx = -1
+
+        start_symbol = self._language.quantize_symbol(start_sym)
+        end_symbol = self._language.quantize_symbol(end_sym)
+
+        for idx, node in enumerate(self._data):
+            if node.symbol == start_symbol:
+                start_idx = idx
+            elif node.symbol == end_symbol and start_idx >= 0:
+                groupings.append((start_idx, idx))
+                start_idx = -1
+
+        return groupings
