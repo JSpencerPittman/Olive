@@ -1,4 +1,5 @@
 STRUCT
+	KEYWORD__TYPEDEF: typedef
 	KEYWORD__STRUCT: struct
 	{: {
 	VARIABLE
@@ -11,8 +12,10 @@ STRUCT
 		;: ;
 	}: }
 	IDENTIFIER: patch_image
+	;: ;
 
 STRUCT
+	KEYWORD__TYPEDEF: typedef
 	KEYWORD__STRUCT: struct
 	{: {
 	VARIABLE
@@ -29,4 +32,5 @@ STRUCT
 		;: ;
 	}: }
 	IDENTIFIER: apply_hunks_ctx
+	;: ;
 

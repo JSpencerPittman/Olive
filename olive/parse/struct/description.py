@@ -1,6 +1,5 @@
 from olive.parse.struct.struct_lexer import StructLexer
 from olive.parse.lexer.ast import RawASTNode
-from olive.parse.regex.language import Language
 from pathlib import Path
 from time import time
 from dataclasses import dataclass
@@ -54,7 +53,8 @@ class StructDescription(object):
 
     def serialize(self) -> str:
         return (
-            "struct {\n"
+            f"struct {f'{self.alias} ' if self.alias else ''}"
+            + "{\n"
             + "\n".join(["\t" + v.serialize() for v in self.variables])
             + "\n}"
         )
@@ -107,7 +107,9 @@ if __name__ == "__main__":
     with open(OUTPUT_PATH, "w") as outfile:
         for node in results:
             outfile.write(node.serialize_graph() + "\n\n")
-            print(StructDescription.parse_ast_struct(node).serialize())
+            struct_desc = StructDescription.parse_ast_struct(node)
+            if struct_desc is not None:
+                print(struct_desc.serialize())
 
     end = time()
 
