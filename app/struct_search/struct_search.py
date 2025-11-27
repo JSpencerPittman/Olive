@@ -1,9 +1,11 @@
 from flask import Flask, render_template, jsonify, redirect, session, request
 from pathlib import Path
 from olive.file.file import FileTree
-from olive.parse.struct.struct_lexer import StructLexer
-from olive.parse.struct.description import StructDescription
-from olive.parse.lexer.ast import RawASTNode
+from olive.parse.struct.description import find_structs
+from app.struct_search.struct_ref import (
+    ReferencingStructDescription,
+    ReferencingStructDescriptionSet,
+)
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
@@ -15,22 +17,14 @@ app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 ft = FileTree(Path(__file__).parent.parent.parent)
 ft.index_files()
-structs: list[StructDescription] = []
-
-
-def find_structs(path: Path):
-    lexy = StructLexer()
-    for struct in lexy.find_all_structures(path):
-        raw_struct = RawASTNode.resolve_quantized_ast_tree(struct, lexy._language)
-        struct_desc = StructDescription.parse_ast_struct(raw_struct)
-        if struct_desc is not None:
-            print(struct_desc.serialize())
-            structs.append(struct_desc)
+struct_descs = ReferencingStructDescriptionSet()
 
 
 @app.route("/")
 def index():
-    structs_serialized = [struct.serialize() for struct in structs]
+    structs_serialized = [
+        (struct.existing_references, struct.serialize()) for struct in struct_descs
+    ]
     return render_template("struct_search.html", structs_serialized=structs_serialized)
 
 
@@ -53,5 +47,8 @@ def set_proj_dir():
 def parse_structs():
     path = request.args.get("path")
     if path is not None:
-        find_structs(path)
+        for struct in find_structs(path):
+            struct_descs.add_struct(
+                ReferencingStructDescription.from_reg_struct_desc(struct)
+            )
     return redirect("/")

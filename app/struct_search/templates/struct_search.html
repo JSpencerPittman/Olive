@@ -15,8 +15,11 @@
     </div>
     <h2>Structures</h2>
     <div>
-        {% for struct_serialized in structs_serialized %}
+        {% for struct_references, struct_serialized in structs_serialized %}
         <pre><code>{{ struct_serialized }}</code></pre>
+            {% for struct_reference in struct_references %}
+            <button>{{ struct_reference }}</button>
+            {% endfor %}
         {% endfor %}
     </div>
     <script src="static/struct_search.js"></script>

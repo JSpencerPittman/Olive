@@ -108,6 +108,17 @@ class StructDescription(object):
         return cls(variables, alias, typedef_alias)
 
 
+def find_structs(path: Path) -> list[StructDescription]:
+    structs = []
+    lexy = StructLexer()
+    for struct in lexy.find_all_structures(path):
+        raw_struct = RawASTNode.resolve_quantized_ast_tree(struct, lexy._language)
+        struct_desc = StructDescription.parse_ast_struct(raw_struct)
+        if struct_desc is not None:
+            structs.append(struct_desc)
+    return structs
+
+
 """
 Driver
 """
@@ -134,14 +145,6 @@ if __name__ == "__main__":
             struct_desc = StructDescription.parse_ast_struct(node)
             if struct_desc is not None:
                 print(struct_desc.serialize())
-
-    # results = [
-    #     RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
-    #     for node in lexy.parse_file(SAMPLE_PATH)
-    # ]
-    # with open(OUTPUT_PATH, "w") as outfile:
-    #     for node in results:
-    #         outfile.write(node.serialize_graph() + "\n\n")
 
     end = time()
 
