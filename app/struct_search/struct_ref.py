@@ -49,6 +49,13 @@ class ReferencingStructDescription(StructDescription):
             assert referred.name is not None
             self.existing_references.add(referred.name)
 
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "references": list(self.existing_references),
+            "serialized": self.serialize(),
+        }
+
     def __eq__(self, value) -> bool:
         if not isinstance(value, StructDescription):
             return False
@@ -70,6 +77,12 @@ class ReferencingStructDescriptionSet(object):
         if struct not in self._structs:
             self._structs.append(struct)
             self._update_references_wrt_latest_node()
+
+    def get_struct(self, name: str) -> Optional[ReferencingStructDescription]:
+        for struct in self._structs:
+            if struct.name == name:
+                return struct
+        return None
 
     def __iter__(self):
         return iter(self._structs)
