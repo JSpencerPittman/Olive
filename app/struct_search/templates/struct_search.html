@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <h1>Structure Search</h1>
+    <h2>Project Directory</h2>
+    <form method="POST" action="set-proj-dir">
+        <input type="text" name="proj-dir">
+        <input type="submit" value="Submit">
+    </form>
+    <h2>Find File</h2>
+    <div class="search-container">
+        <input type="search" id="search" placeholder="Search..." autocomplete="False">
+        <ul id="search-results" role="listbox"></ul>
+    </div>
+    <h2>Structures</h2>
+    <ul>
+        {% for struct_serialized in structs_serialized %}
+        <li>{{ struct_serialized }}</li>
+        {% endfor %}
+    </ul>
+    <script src="static/file_search.js"></script>
+</body>
+</html>
