@@ -31,7 +31,7 @@ def find_structs(path: Path):
 @app.route("/")
 def index():
     structs_serialized = [struct.serialize() for struct in structs]
-    return render_template("file_search.html", structs_serialized=structs_serialized)
+    return render_template("struct_search.html", structs_serialized=structs_serialized)
 
 
 @app.route("/search")

@@ -14,11 +14,11 @@
         <ul id="search-results" role="listbox"></ul>
     </div>
     <h2>Structures</h2>
-    <ul>
+    <div>
         {% for struct_serialized in structs_serialized %}
-        <li>{{ struct_serialized }}</li>
+        <pre><code>{{ struct_serialized }}</code></pre>
         {% endfor %}
-    </ul>
-    <script src="static/file_search.js"></script>
+    </div>
+    <script src="static/struct_search.js"></script>
 </body>
 </html>
