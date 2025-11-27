@@ -14,21 +14,32 @@
         <ul id="search-results" role="listbox"></ul>
     </div>
     <h2>Structures</h2>
-    <div id="struct-display-container">
-        <div id="struct-sel-container">
-            <div class="struct-sel">
-                {% for struct in structs %}
-                    <button onclick="makeSelection('left', '{{ struct.name }}')">{{ struct.name }}</button>
+    <button onclick="newView()">New View</button>
+    <div id="struct-views-container">
+        {% for view in state.views %}
+        <div class="struct-view">
+            <div class="sv-sel">
+                {% for struct_desc in state.struct_descs %}
+                <button onclick="makeSelection('{{ view.idx }}', '{{ struct_desc.name }}')">
+                    {{ struct_desc.name }}
+                </button>
                 {% endfor %}
             </div>
+            <div class="sv-code"></div>
+                {% if view.selection %}
+                    <pre><code>{{ view.desc.serialized }}</code></pre>
+                {% endif %}
+            <div class="sv-ref">
+                {% if view.selection %}
+                    {% for reference in view.desc.references %}
+                        <button onclick="newView('{{ reference }}')">{{ reference }}</button>
+                    {% endfor %}
+                {% endif %}
+            </div>
         </div>
-        <div id="struct-disp-container">
-            <div class="struct-disp" id="left-struct-disp"></div>
-        </div>
-        <div id="struct-ref-container">
-            <div class="struct-ref" id="left-struct-ref"></div>
-        </div>
+        {% endfor %}
     </div>
     <script src="static/struct_search.js"></script>
 </body>
+
 </html>

@@ -25,48 +25,67 @@ function updateSearchResultsList(matches) {
 }
 
 /*
-PROCEDURE: Make selection
+PROCEDURE: Create code block
 */
-function makeSelection(side, selection) {
-    function createCodeBlock(serialized_structure) {
-        // Element References
-        let structDispEl = document.getElementById("left-struct-disp");
+function createCodeBlock(structViewRef, struct_serialized) {
+    // Reference elements
+    let codeBlockRef = structViewRef.children[1];
 
-        // New Elements
-        let preFormatEl = document.createElement("pre");
-        let codeEl = document.createElement("code");
-        let codeTextNode = document.createTextNode(serialized_structure);
+    // New elements
+    let preFormatEl = document.createElement("pre");
+    let codeEl = document.createElement("code");
+    let codeTextNode = document.createTextNode(struct_serialized);
+
+    // Link elements
+    codeBlockRef.innerHTML = "";
+    codeBlockRef.appendChild(preFormatEl);
+    preFormatEl.appendChild(codeEl);
+    codeEl.appendChild(codeTextNode);
+}
+
+/*
+PROCEDURE: Populate references
+*/
+function populateReferences(structViewRef, references) {
+    // Element references
+    let refsRef = structViewRef.children[2];
+    refsRef.innerHTML = "";
+
+    references.forEach(reference => {
+        // New elements
+        let buttonEl = document.createElement("button");
+        let refTextNode = document.createTextNode(reference);
+
+        // Onclick action
+        buttonEl.setAttribute("onclick", `newView('${reference}')`)
 
         // Link elements
-        structDispEl.innerHTML = "";
-        structDispEl.appendChild(preFormatEl);
-        preFormatEl.appendChild(codeEl);
-        codeEl.appendChild(codeTextNode);
-    }
+        refsRef.appendChild(buttonEl);
+        buttonEl.appendChild(refTextNode);
+    });
+}
 
-    function populateReferences(references) {
-        // Element references
-        let structRefEl = document.getElementById("left-struct-ref");
+/*
+PROCEDURE: New view
+*/
+function newView(selection) {
+    const url = selection ? `/new-view?selection=${encodeURIComponent(selection)}` : "/new-view";
+    fetch(url)
+        .then(r => r.json())
+        .then(_ => window.location.reload());
+}
 
-        references.forEach(reference => {
-            // New elements
-            let buttonEl = document.createElement("button");
-            let refTextNode = document.createTextNode(reference);
+/*
+PROCEDURE: Make selection
+*/
+function makeSelection(view_idx, selection) {
+    let structViewRef = document.getElementById("struct-views-container").children[view_idx];
 
-            // Onclick action
-            buttonEl.setAttribute("onclick", `makeSelection('left', '${reference}')`)
-
-            // Link elements
-            structRefEl.appendChild(buttonEl);
-            buttonEl.appendChild(refTextNode);
-        });
-    }
-
-    fetch(`/make-selection?side=${encodeURIComponent(side)}&selection=${encodeURIComponent(selection)}`)
+    fetch(`/make-selection?view_idx=${encodeURIComponent(view_idx)}&selection=${encodeURIComponent(selection)}`)
         .then(r => r.json())
         .then(result => {
-            createCodeBlock(result["serialized"]);
-            populateReferences(result["references"]);
+            createCodeBlock(structViewRef, result["desc"]["serialized"]);
+            populateReferences(structViewRef, result["desc"]["references"]);
         });
 }
 
