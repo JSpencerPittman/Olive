@@ -1,4 +1,5 @@
 from olive.parse.lexer.c_lexer import CLexer
+from olive.parse.lexer.ast import QuantizedASTNode
 from typing import ClassVar
 from pathlib import Path
 
@@ -11,7 +12,7 @@ class StructLexer(CLexer):
 
         self._load_and_compile_rules(StructLexer.RULES_PATH)
 
-    def find_all_structures(self, path: Path):
+    def find_all_structures(self, path: Path) -> list[QuantizedASTNode]:
         QT_STRUCT = self._language.quantize_symbol("STRUCT")
         nodes = self.parse_file(path)
 

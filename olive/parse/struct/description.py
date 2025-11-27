@@ -16,7 +16,7 @@ class VariableDescription(object):
     def serialize(self) -> str:
         return (
             self.type_name
-            + f" {("*" * self.pointer_degree) +" " if self.pointer_degree > 0 else ""}"
+            + f" {("*" * self.pointer_degree) + " " if self.pointer_degree > 0 else ""}"
             + self.name
             + (f"[{self.array_size}]" if self.array_size is not None else "")
         )
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     SAMPLE_PATH = (
         Path(__file__).parent.parent.parent.parent
         / "sample/libgit2/src/libgit2"
-        / "apply.c"
+        / "attrcache.h"
     )
 
     lexy = StructLexer()
