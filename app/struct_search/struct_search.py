@@ -55,8 +55,8 @@ class StructViewManager(object):
     def get_view(self, idx: int) -> StructView:
         return self._views[idx]
 
-    def add_view(self, selection: Optional[str]) -> int:
-        new_view_idx = self._last_idx + 1
+    def add_view(self, selection: Optional[str]):
+        new_view_idx = len(self._views)
         new_view = StructView(new_view_idx)
         if selection is not None:
             for struct_desc in self._struct_descs:
@@ -64,8 +64,11 @@ class StructViewManager(object):
                     new_view.make_selection(selection, struct_desc)
 
         self._views.append(new_view)
-        self._last_idx = new_view_idx
-        return new_view_idx
+
+    def delete_view(self, view_idx: int):
+        self._views.pop(view_idx)
+        for idx, view in enumerate(self._views):
+            view.idx = idx
 
     def state_to_json(self):
         return {
@@ -88,8 +91,6 @@ view_manager = StructViewManager()
 
 @app.route("/")
 def index():
-    print(view_manager.state_to_json())
-    print(len(view_manager._views))
     return render_template("struct_search.html", state=view_manager.state_to_json())
 
 
@@ -131,6 +132,12 @@ def make_selection():
 @app.route("/new-view")
 def add_view():
     selection = request.args.get("selection")
-    print("SELECTION:", selection)
     view_manager.add_view(selection)
+    return jsonify({})
+
+
+@app.route("/delete-view")
+def delete_view():
+    view_idx = int(request.args.get("view-idx"))
+    view_manager.delete_view(view_idx)
     return jsonify({})

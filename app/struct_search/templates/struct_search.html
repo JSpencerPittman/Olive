@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html>
 
+<head>
+    <link rel="stylesheet" href="static/struct_search.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
 <body>
     <h1>Structure Search</h1>
     <h2>Project Directory</h2>
@@ -14,10 +19,23 @@
         <ul id="search-results" role="listbox"></ul>
     </div>
     <h2>Structures</h2>
-    <button onclick="newView()">New View</button>
+    <div id="struct-util-container">
+        <button onclick="newView()">New View</button>
+        <button>Reset</button>
+    </div>
     <div id="struct-views-container">
         {% for view in state.views %}
         <div class="struct-view">
+            <div class="sv-header">
+                <p class="sv-header-text">
+                    {% if view.selection %}
+                    {{ view.desc.name }}
+                    {% endif %}
+                </p>
+                <button class="sv-exit-btn" onclick="deleteView('{{ view.idx }}')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
             <div class="sv-sel">
                 {% for struct_desc in state.struct_descs %}
                 <button onclick="makeSelection('{{ view.idx }}', '{{ struct_desc.name }}')">
@@ -25,15 +43,16 @@
                 </button>
                 {% endfor %}
             </div>
-            <div class="sv-code"></div>
+            <div class="sv-code">
                 {% if view.selection %}
-                    <pre><code>{{ view.desc.serialized }}</code></pre>
+                <pre><code>{{ view.desc.serialized }}</code></pre>
                 {% endif %}
+            </div>
             <div class="sv-ref">
                 {% if view.selection %}
-                    {% for reference in view.desc.references %}
-                        <button onclick="newView('{{ reference }}')">{{ reference }}</button>
-                    {% endfor %}
+                {% for reference in view.desc.references %}
+                <button onclick="newView('{{ reference }}')">{{ reference }}</button>
+                {% endfor %}
                 {% endif %}
             </div>
         </div>

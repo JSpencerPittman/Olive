@@ -25,11 +25,26 @@ function updateSearchResultsList(matches) {
 }
 
 /*
+PROCEDURE: Synchronize header
+*/
+function synchronizeHeader(structViewRef, heading) {
+    // Reference elements
+    let headingTextRef = structViewRef.children[0].children[0];
+
+    // New elements
+    let headingTextNode = document.createTextNode(heading);
+
+    // Link elements
+    headingTextRef.innerHTML = "";
+    headingTextRef.appendChild(headingTextNode);
+}
+
+/*
 PROCEDURE: Create code block
 */
 function createCodeBlock(structViewRef, struct_serialized) {
     // Reference elements
-    let codeBlockRef = structViewRef.children[1];
+    let codeBlockRef = structViewRef.children[2];
 
     // New elements
     let preFormatEl = document.createElement("pre");
@@ -48,9 +63,8 @@ PROCEDURE: Populate references
 */
 function populateReferences(structViewRef, references) {
     // Element references
-    let refsRef = structViewRef.children[2];
+    let refsRef = structViewRef.children[3];
     refsRef.innerHTML = "";
-
     references.forEach(reference => {
         // New elements
         let buttonEl = document.createElement("button");
@@ -76,6 +90,16 @@ function newView(selection) {
 }
 
 /*
+PROCEDURE: Delete view
+*/
+function deleteView(view_idx) {
+    const url = `/delete-view?view-idx=${encodeURIComponent(view_idx)}`;
+    fetch(url)
+        .then(r => r.json())
+        .then(_ => window.location.reload());
+}
+
+/*
 PROCEDURE: Make selection
 */
 function makeSelection(view_idx, selection) {
@@ -84,6 +108,7 @@ function makeSelection(view_idx, selection) {
     fetch(`/make-selection?view_idx=${encodeURIComponent(view_idx)}&selection=${encodeURIComponent(selection)}`)
         .then(r => r.json())
         .then(result => {
+            synchronizeHeader(structViewRef, result["desc"]["name"]);
             createCodeBlock(structViewRef, result["desc"]["serialized"]);
             populateReferences(structViewRef, result["desc"]["references"]);
         });
