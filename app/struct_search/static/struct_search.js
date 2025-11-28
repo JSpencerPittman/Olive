@@ -113,6 +113,15 @@ function deleteView(view_idx) {
 }
 
 /*
+PROCEDURE: Reset views
+*/
+function resetViews() {
+    fetch("/reset-views")
+        .then(r => r.json())
+        .then(_ => window.location.reload());
+}
+
+/*
 PROCEDURE: Make selection
 */
 function makeSelection(view_idx, selection) {

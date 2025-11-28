@@ -70,6 +70,9 @@ class StructViewManager(object):
         for idx, view in enumerate(self._views):
             view.idx = idx
 
+    def reset_views(self):
+        self._views.clear()
+
     def state_to_json(self):
         return {
             "views": sorted(
@@ -140,4 +143,10 @@ def add_view():
 def delete_view():
     view_idx = int(request.args.get("view-idx"))
     view_manager.delete_view(view_idx)
+    return jsonify({})
+
+
+@app.route("/reset-views")
+def reset_views():
+    view_manager.reset_views()
     return jsonify({})
