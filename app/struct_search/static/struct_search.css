@@ -1,3 +1,70 @@
+/* Global styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    background-color: #fafafa;
+    color: #333;
+}
+
+/* Headings */
+h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0 0 40px 0;
+    color: #1a1a1a;
+}
+
+h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 32px 0 16px 0;
+    color: #2a2a2a;
+}
+
+/* Project directory */
+#proj-dir-form {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+#proj-dir-form input[type="text"] {
+    flex: 1;
+    max-width: 500px;
+    padding: 10px 16px;
+    font-size: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    transition: border-color 0.2s;
+}
+
+#proj-dir-form input[type="text"]:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+#proj-dir-form input[type="submit"] {
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+    background: #4a90e2;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#proj-dir-form input[type="submit"]:hover {
+    background: #357abd;
+}
+
+#proj-dir-form input[type="submit"]:active {
+    transform: translateY(1px);
+}
+
 /* Search container */
 #search-container {
     position: relative;
@@ -65,6 +132,34 @@
 .sr-filepath {
     color: #666;
     font-size: 13px;
+}
+
+/* Structure Utility */
+#struct-util-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+#struct-util-container button {
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#struct-util-container button:hover {
+    border-color: #4a90e2;
+    color: #4a90e2;
+    background: #f8fbff;
+}
+
+#struct-util-container button:active {
+    transform: translateY(1px);
 }
 
 /* Structure views */
