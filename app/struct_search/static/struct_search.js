@@ -12,9 +12,22 @@ PROCEDURE: Update search results
 */
 function updateSearchResultsList(matches) {
     function createFileLink(content) {
+        // Create elements
         let listElement = document.createElement("li");
         let anchorElement = document.createElement("a");
-        anchorElement.appendChild(document.createTextNode(`${content["name"]} (${content["proj_path"]})`));
+        let fileNameSpanElement = document.createElement("span");
+        let filePathSpanElement = document.createElement("span");
+        let filePathTextNode = document.createTextNode(`(${content["proj_path"]})`);
+
+        // Set attributes
+        fileNameSpanElement.textContent = `${content["name"]} `;
+        fileNameSpanElement.setAttribute("class", "sr-filename");
+        filePathSpanElement.setAttribute("class", "sr-filepath");
+
+        // Link elements
+        filePathSpanElement.appendChild(filePathTextNode);
+        anchorElement.appendChild(fileNameSpanElement);
+        anchorElement.appendChild(filePathSpanElement);
         anchorElement.setAttribute("href", `/parse-structs?path=${encodeURIComponent(content["full_path"])}`)
         listElement.appendChild(anchorElement);
         searchResultsList.appendChild(listElement);
