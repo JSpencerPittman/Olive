@@ -19,9 +19,8 @@ class VariableDescription(object):
             + f" {("*" * self.pointer_degree) + " " if self.pointer_degree > 0 else ""}"
             + self.name
             + (f"[{self.array_size}]" if self.array_size is not None else "")
+            + ";"
         )
-
-        return f"{self.type_name} {'*' * self.pointer_degree} {self.name}"
 
     @classmethod
     def parse_ast_variable(cls, node: RawASTNode) -> Optional[Self]:
@@ -58,19 +57,67 @@ class VariableDescription(object):
 
 
 @dataclass
+class UnionDescription(object):
+    members: list[VariableDescription]
+    name: str
+
+    def serialize(self) -> str:
+        return (
+            "union {\n"
+            + "\n".join(["\t" + v.serialize() for v in self.members])
+            + "\n} "
+            + f"{self.name};"
+        )
+
+    @classmethod
+    def parse_ast_union(cls, node: RawASTNode) -> Optional[Self]:
+        assert node.symbol == "UNION"
+
+        name = None
+        members = []
+
+        if node.children is not None:
+            for child in node.children:
+                match child.symbol:
+                    case "VARIABLE":
+                        var = VariableDescription.parse_ast_variable(child)
+                        if var is not None:
+                            members.append(var)
+                    case "IDENTIFIER":
+                        name = child.value
+                    case _:
+                        continue
+
+        assert name is not None
+        return cls(members, name)
+
+
+@dataclass
 class StructDescription(object):
-    variables: list[VariableDescription]
+    members: list[VariableDescription | UnionDescription]
     alias: Optional[str] = None
     typedef_alias: Optional[str] = None
 
     def serialize(self) -> str:
-        return (
+        members = []
+        for member in self.members:
+            if isinstance(member, VariableDescription):
+                members.append("\t" + member.serialize())
+            else:
+                members.append(
+                    "\n".join(["\t" + line for line in member.serialize().split("\n")])
+                )
+
+        serialized = (
             f"struct {f'{self.alias} ' if self.alias else ''}"
             + "{\n"
-            + "\n".join(["\t" + v.serialize() for v in self.variables])
+            + "\n".join(members)
             + "\n}"
             + (f" {self.typedef_alias}" if self.typedef_alias else "")
+            + ";"
         )
+
+        return serialized
 
     @classmethod
     def parse_ast_struct(cls, node: RawASTNode) -> Optional[Self]:
@@ -78,7 +125,7 @@ class StructDescription(object):
 
         alias = None
         typedef_alias = None
-        variables = []
+        members: list[UnionDescription | VariableDescription] = []
 
         if node.children is not None:
             encountered_curly_brace = False
@@ -89,7 +136,7 @@ class StructDescription(object):
                     case "VARIABLE":
                         var = VariableDescription.parse_ast_variable(child)
                         if var is not None:
-                            variables.append(var)
+                            members.append(var)
                     case "{":
                         open_curly_brace_cnt += 1
                         encountered_curly_brace = True
@@ -101,11 +148,14 @@ class StructDescription(object):
                                 typedef_alias = child.value
                             else:
                                 alias = child.value
-
+                    case "UNION":
+                        union = UnionDescription.parse_ast_union(child)
+                        if union is not None:
+                            members.append(union)
                     case _:
                         continue
 
-        return cls(variables, alias, typedef_alias)
+        return cls(members, alias, typedef_alias)
 
 
 def find_structs(path: Path) -> list[StructDescription]:

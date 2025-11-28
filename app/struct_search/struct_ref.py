@@ -1,25 +1,38 @@
-from olive.parse.struct.description import StructDescription, VariableDescription
+from olive.parse.struct.description import (
+    StructDescription,
+    VariableDescription,
+    UnionDescription,
+)
 from typing import Optional
 
 
 class ReferencingStructDescription(StructDescription):
     def __init__(
         self,
-        variables: list[VariableDescription],
+        members: list[VariableDescription | UnionDescription],
         alias: Optional[str] = None,
         typedef_alias: Optional[str] = None,
     ):
         def _gather_references() -> list[str]:
             nonlocal self
-            return [var.type_name for var in self.variables]
+            references = []
 
-        super().__init__(variables, alias, typedef_alias)
+            for member in self.members:
+                if isinstance(member, VariableDescription):
+                    references.append(member.type_name)
+                else:
+                    for u_member in member.members:
+                        references.append(u_member.type_name)
+
+            return references
+
+        super().__init__(members, alias, typedef_alias)
         self._references = _gather_references()
         self.existing_references: set[str] = set([])
 
     @classmethod
     def from_reg_struct_desc(cls, reg: StructDescription):
-        return cls(reg.variables, reg.alias, reg.typedef_alias)
+        return cls(reg.members, reg.alias, reg.typedef_alias)
 
     @property
     def name(self) -> Optional[str]:

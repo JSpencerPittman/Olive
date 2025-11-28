@@ -30,7 +30,6 @@ C_KEYWORDS = set(
         "switch",
         "typedef",
         "union",
-        "void",
         "volatile",
         "while",
     ]

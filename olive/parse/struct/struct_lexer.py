@@ -19,3 +19,24 @@ class StructLexer(CLexer):
         struct_nodes = [node for node in nodes if node.symbol == QT_STRUCT]
 
         return struct_nodes
+
+
+if __name__ == "__main__":
+    sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/struct_defs.c")
+
+    lexy = StructLexer()
+    res_quant = lexy.find_all_structures(sample_path)
+    # print(res)
+    # res_quant = lexy.parse_file(sample_path)
+    from olive.parse.lexer.ast import RawASTNode
+    from olive.parse.struct.description import StructDescription
+
+    res = [
+        RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
+        for node in res_quant
+    ]
+
+    for node in res_quant:
+        res = RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
+        desc = StructDescription.parse_ast_struct(res)
+        print(desc.serialize())
