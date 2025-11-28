@@ -62,13 +62,17 @@ function createCodeBlock(structViewRef, struct_serialized) {
     // New elements
     let preFormatEl = document.createElement("pre");
     let codeEl = document.createElement("code");
-    let codeTextNode = document.createTextNode(struct_serialized);
+
+    // Set attributes
+    codeEl.textContent = struct_serialized;
+    codeEl.setAttribute("class", "language-c");
 
     // Link elements
     codeBlockRef.innerHTML = "";
     codeBlockRef.appendChild(preFormatEl);
     preFormatEl.appendChild(codeEl);
-    codeEl.appendChild(codeTextNode);
+
+    Prism.highlightElement(codeEl);
 }
 
 /*

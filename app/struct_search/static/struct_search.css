@@ -24,6 +24,19 @@ h2 {
 }
 
 /* Project directory */
+#curr-proj-dir p {
+    font-size: 14px;
+    color: #666;
+    background: #f5f5f5;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    word-break: break-all;
+    display: inline-block;
+    max-width: 100%;
+}
+
 #proj-dir-form {
     display: flex;
     gap: 12px;
@@ -172,7 +185,7 @@ h2 {
 
 .struct-view {
     flex: 1 1 calc(33.333% - 14px);
-    max-width: calc(33.333% - 14px);
+    max-width: calc(30% - 14px);
     min-width: 300px;
 
     /* Card Styling */

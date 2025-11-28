@@ -16,8 +16,7 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 # Set the secret key to some random bytes. Keep this really secret!
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
-ft = FileTree(Path(__file__).parent.parent.parent)
-ft.index_files()
+ft: Optional[FileTree] = None
 
 
 class StructView(object):
@@ -94,11 +93,17 @@ view_manager = StructViewManager()
 
 @app.route("/")
 def index():
-    return render_template("struct_search.html", state=view_manager.state_to_json())
+    return render_template(
+        "struct_search.html",
+        state=view_manager.state_to_json(),
+        proj_dir=None if ft is None else ft.proj_dir,
+    )
 
 
 @app.route("/search")
 def search():
+    if ft is None:
+        return jsonify({"matches": []})
     query = request.args.get("q", "")
     matches = [match.to_json() for match in ft.search(query, 10)]
     response = {"matches": matches}
@@ -107,7 +112,13 @@ def search():
 
 @app.route("/set-proj-dir", methods=["POST"])
 def set_proj_dir():
-    session["proj-dir"] = request.form["proj-dir"]
+    global ft
+    proj_dir = request.form["proj-dir"]
+
+    if Path(proj_dir).exists():
+        session["proj-dir"] = proj_dir
+        ft = FileTree(Path(proj_dir))
+        ft.index_files()
     return redirect("/")
 
 

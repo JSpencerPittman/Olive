@@ -3,14 +3,27 @@
 
 <head>
     <link rel="stylesheet" href="static/struct_search.css">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Tab -->
     <link rel="shortcut icon" href="{{ url_for('static', filename='search.ico') }}" type="image/x-icon">
     <title>Struct Search</title>
+    <!-- Sytntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
 </head>
 
 <body>
     <h1>Structure Search</h1>
     <h2>Project Directory</h2>
+    <div id="curr-proj-dir">
+        {% if proj_dir %}
+            <p>{{ proj_dir }}</p>
+        {% else %}
+            <p>No Project Directory Selected</p>
+        {% endif %}
+    </div>
     <form id="proj-dir-form" method="POST" action="set-proj-dir">
         <input type="text" name="proj-dir" autocomplete="False">
         <input type="submit" value="Submit">
@@ -47,7 +60,7 @@
             </div>
             <div class="sv-code">
                 {% if view.selection %}
-                <pre><code>{{ view.desc.serialized }}</code></pre>
+                <pre><code class="language-c">{{ view.desc.serialized }}</code></pre>
                 {% endif %}
             </div>
             <div class="sv-ref">
