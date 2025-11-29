@@ -22,12 +22,11 @@ class StructLexer(CLexer):
 
 
 if __name__ == "__main__":
-    sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/struct_defs.c")
+    sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/tmp.c")
 
     lexy = StructLexer()
-    res_quant = lexy.find_all_structures(sample_path)
-    # print(res)
-    # res_quant = lexy.parse_file(sample_path)
+    # res_quant = lexy.find_all_structures(sample_path)
+    res_quant = lexy.parse_file(sample_path)
     from olive.parse.lexer.ast import RawASTNode
     from olive.parse.struct.description import StructDescription
 
@@ -38,5 +37,6 @@ if __name__ == "__main__":
 
     for node in res_quant:
         res = RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
-        desc = StructDescription.parse_ast_struct(res)
-        print(desc.serialize())
+        print(res.serialize_graph())
+        # desc = StructDescription.parse_ast_struct(res)
+        # print(desc.serialize())
