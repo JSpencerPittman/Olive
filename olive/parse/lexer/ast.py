@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, TypeVar, Generic, Self
 from olive.parse.regex.language import Language
 from abc import ABC
+from copy import copy
 
 
 T = TypeVar("T")
@@ -65,3 +66,40 @@ class RawASTNode(ASTNode[str]):
                 )
 
         return raw_root
+
+    def get_first_child(self, symbol: str) -> Optional[Self]:
+        if self.symbol == symbol:
+            return self
+        if self.children is not None:
+            for child in self.children:
+                if (tgt := child.get_first_child(symbol)) is not None:
+                    return tgt
+        return None
+
+    def get_nth_child(self, symbol: str, n: int) -> Optional[Self]:
+        remaining, match = self._get_nth_child_recursive(symbol, n)
+        if remaining == 0:
+            return match
+        else:
+            return None
+
+    def does_child_exist(self, symbol: str) -> bool:
+        return self.get_first_child(symbol) is not None
+
+    def _get_nth_child_recursive(
+        self, symbol: str, remaining: int
+    ) -> tuple[int, Optional[Self]]:
+        if self.symbol == symbol:
+            remaining -= 1
+            if remaining == 0:
+                return (0, self)
+
+        if self.children is None:
+            return (remaining, None)
+
+        for child in self.children:
+            rem, match = child._get_nth_child_recursive(symbol, remaining)
+            if rem == 0:
+                return (0, match)
+            remaining = rem
+        return (remaining, None)

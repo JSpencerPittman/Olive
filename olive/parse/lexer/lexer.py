@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, Optional
 
 from olive.parse.regex.graph import GraphTraveler, Graph
 from olive.parse.regex.language import Language
@@ -111,3 +111,73 @@ class Lexer(object):
         self._data = [
             t for t in self._data if t.symbol not in [qt_whitespace, qt_linebreak]
         ]
+
+    def _utility__find_groups(
+        self,
+        start_sym: str,
+        end_sym: Optional[str] = None,
+        is_end_func: Optional[
+            Callable[[int, dict, Language], tuple[bool, dict]]
+        ] = None,
+    ) -> list[tuple[int, int]]:
+        """
+        INCLUSIVE
+        """
+        qt_start_sym = self._language.quantize_symbol(start_sym)
+        qt_end_sym = (
+            None if end_sym is None else self._language.quantize_symbol(end_sym)
+        )
+
+        state: dict = {}
+
+        def is_end(symbol: int) -> bool:
+            nonlocal state
+            if end_sym is not None:
+                return symbol == qt_end_sym
+            else:
+                assert is_end_func is not None
+                result, state = is_end_func(symbol, state, self._language)
+                return result
+
+        groupings = []
+        start_idx = -1
+
+        for idx, node in enumerate(self._data):
+            if node.symbol == qt_start_sym:
+                start_idx = idx
+            elif start_idx >= 0 and is_end(node.symbol):
+                groupings.append((start_idx, idx))
+                start_idx = -1
+
+        return groupings
+
+    def _utility__consolidate_groups(
+        self,
+        groups: list[tuple[int, int]],
+        sym_name: str,
+        inclusive: tuple[bool, bool] = (True, True),
+    ):
+        qt_sym = self._language.quantize_symbol(sym_name)
+
+        last_idx = 0
+        processed = []
+        for s, e in groups:
+            # Inclusivity
+            s = s if inclusive[0] else s + 1
+            e = e if inclusive[1] else e - 1
+
+            processed.extend(self._data[last_idx:s])
+            if s + 1 != e:
+                processed.append(
+                    QuantizedASTNode(
+                        qt_sym,
+                        (
+                            "".join(
+                                [node.serialize("") for node in self._data[s + 1 : e]]
+                            )
+                        ).strip(),
+                    )
+                )
+                last_idx = e + 1
+        processed.extend(self._data[last_idx:])
+        self._data = processed

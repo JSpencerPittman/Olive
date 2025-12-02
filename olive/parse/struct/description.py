@@ -1,106 +1,209 @@
-from olive.parse.struct.struct_lexer import StructLexer
+from abc import ABC, abstractmethod
 from olive.parse.lexer.ast import RawASTNode
-from pathlib import Path
-from time import time
 from dataclasses import dataclass
-from typing import Optional, Self
+from typing import Optional, Self, Type, ClassVar
+
+
+class Description(ABC):
+    _AST_NAME: ClassVar[str] = ""
+
+    @abstractmethod
+    def serialize(self) -> str: ...
+
+    @classmethod
+    @abstractmethod
+    def from_ast(cls, node: RawASTNode) -> Optional[Self | list[Self]]: ...
+
+    @classmethod
+    def is_ast_node_of_this_type(cls, node: RawASTNode) -> bool:
+        return node.symbol == cls._AST_NAME
 
 
 @dataclass
-class VariableDescription(object):
+class VariableDescription(Description):
+    _AST_NAME: ClassVar[str] = "VARIABLE__DEC"
+
+    is_static: bool
+    is_const: bool
+    is_struct: bool
+    is_unsigned: bool
     type_name: str
-    name: str
     pointer_degree: int
-    array_size: Optional[str]
+    name: str
+    array_contents: Optional[str]
 
     def serialize(self) -> str:
         return (
-            self.type_name
-            + f" {("*" * self.pointer_degree) + " " if self.pointer_degree > 0 else ""}"
+            ("static " if self.is_static else "")
+            + ("const " if self.is_const else "")
+            + ("struct " if self.is_struct else "")
+            + ("unsigned " if self.is_unsigned else "")
+            + self.type_name
+            + " "
+            + (f"{'*' * self.pointer_degree} " if self.pointer_degree > 0 else "")
             + self.name
-            + (f"[{self.array_size}]" if self.array_size is not None else "")
+            + (f"[{self.array_contents}]" if self.array_contents is not None else "")
             + ";"
         )
 
     @classmethod
-    def parse_ast_variable(cls, node: RawASTNode) -> Optional[Self]:
-        assert node.symbol == "VARIABLE"
+    def from_ast(cls, node: RawASTNode) -> list[Self]:
+        assert node.symbol == VariableDescription._AST_NAME
 
-        type_name = ""
-        name = ""
-        pointer_degree = 0
-        array_size = None
-        encountered_identifiers = 0
+        def from__variable_incomplete(cls: Type[Self], node: RawASTNode) -> Self:
+            assert node.symbol == "VARIABLE__INCOMPLETE"
+            is_static = node.does_child_exist("KEYWORD__STATIC")
+            is_const = node.does_child_exist("KEYWORD__CONST")
+            is_struct = node.does_child_exist("KEYWORD__STRUCT")
+            is_unsigned = node.does_child_exist("KEYWORD__UNSIGNED")
 
-        if node.children is None:
-            return None
+            # Type name
+            child = node.get_first_child("IDENTIFIER")
+            assert child is not None and child.value is not None
+            type_name = child.value
 
-        for child in node.children:
-            match child.symbol:
-                case "IDENTIFIER":
-                    encountered_identifiers += 1
-                    assert child.value is not None
-                    if encountered_identifiers == 1:
-                        type_name = child.value
-                    elif encountered_identifiers == 2:
-                        name = child.value
-                    else:
-                        return None
-                case "*":
+            # Pointer degree
+            assert node.children is not None
+            pointer_degree = 0
+            for child in node.children:
+                if child.symbol == "*":
                     pointer_degree += 1
-                case "ARRAY_BRACKET_CONSOLIDATED":
-                    array_size = child.value
-                case _:
-                    continue
 
-        return cls(type_name, name, pointer_degree, array_size)
+            # Name
+            child = node.get_nth_child("IDENTIFIER", 2)
+            assert child is not None and child.value is not None
+            name = child.value
 
+            # Array Contents
+            child = node.get_first_child("ARRAY_BRACKET_CONSOLIDATED")
+            array_contents = None if child is None else child.value
 
-@dataclass
-class UnionDescription(object):
-    members: list[VariableDescription]
-    name: str
+            return cls(
+                is_static,
+                is_const,
+                is_struct,
+                is_unsigned,
+                type_name,
+                pointer_degree,
+                name,
+                array_contents,
+            )
 
-    def serialize(self) -> str:
-        return (
-            "union {\n"
-            + "\n".join(["\t" + v.serialize() for v in self.members])
-            + "\n} "
-            + f"{self.name};"
-        )
+        def from__variable_comma_dec(cls: Type[Self], node: RawASTNode) -> list[Self]:
+            assert node.symbol == "VARIABLE__COMMA_DEC"
+            assert node.children is not None
 
-    @classmethod
-    def parse_ast_union(cls, node: RawASTNode) -> Optional[Self]:
-        assert node.symbol == "UNION"
+            # Parse base variable
+            variable_incomplete_node = node.get_first_child("VARIABLE__INCOMPLETE")
+            assert variable_incomplete_node is not None
+            base_variable = from__variable_incomplete(cls, variable_incomplete_node)
 
-        name = None
-        members = []
+            # Parse each variable
+            variables = [base_variable]
 
-        if node.children is not None:
+            pointer_degree = 0
+            name = ""
+            array_contents = None
+
             for child in node.children:
                 match child.symbol:
-                    case "VARIABLE":
-                        var = VariableDescription.parse_ast_variable(child)
-                        if var is not None:
-                            members.append(var)
+                    case "*":
+                        pointer_degree += 1
                     case "IDENTIFIER":
+                        assert child.value is not None
                         name = child.value
-                    case _:
-                        continue
+                    case "ARRAY_BRACKET_CONSOLIDATED":
+                        assert child.value is not None
+                        array_contents = child.value
+                    case ",":
+                        variables.append(
+                            cls(
+                                base_variable.is_static,
+                                base_variable.is_const,
+                                base_variable.is_struct,
+                                base_variable.is_unsigned,
+                                base_variable.type_name,
+                                pointer_degree,
+                                name,
+                                array_contents,
+                            )
+                        )
+                        pointer_degree = 0
+                        name = ""
+                        array_contents = None
+            variables.append(
+                cls(
+                    base_variable.is_static,
+                    base_variable.is_const,
+                    base_variable.is_struct,
+                    base_variable.is_unsigned,
+                    base_variable.type_name,
+                    pointer_degree,
+                    name,
+                    array_contents,
+                )
+            )
 
-        assert name is not None
-        return cls(members, name)
+            return variables
+
+        if (
+            variable_semicolon_term_node := node.get_first_child(
+                "VARIABLE__SEMICOLON_TERM"
+            )
+        ) is not None:
+            variable_incomplete_node = variable_semicolon_term_node.get_first_child(
+                "VARIABLE__INCOMPLETE"
+            )
+            assert variable_incomplete_node is not None
+            return [from__variable_incomplete(cls, variable_incomplete_node)]
+        else:
+            variable_comma_dec_node = node.get_first_child("VARIABLE__COMMA_DEC")
+            assert variable_comma_dec_node is not None
+            return from__variable_comma_dec(cls, variable_comma_dec_node)
 
 
 @dataclass
-class StructDescription(object):
-    members: list[VariableDescription | UnionDescription]
-    alias: Optional[str] = None
-    typedef_alias: Optional[str] = None
+class ContainerDescription(Description):
+    name: Optional[str]
+    children: list[Description]
+    alias: list[str]
 
-    def serialize(self) -> str:
+    @classmethod
+    def _container_from_ast(cls, node: RawASTNode) -> Self:
+        assert node.children is not None
+
+        name = None
+        children: list[Description] = []
+        alias = []
+
+        encountered_curlies = 0
+        for child in node.children:
+            match child.symbol:
+                case "{":
+                    encountered_curlies += 1
+                case "}":
+                    encountered_curlies += 1
+                case "IDENTIFIER":
+                    if encountered_curlies == 0:
+                        assert child.value is not None
+                        name = child.value
+                    elif encountered_curlies == 2:
+                        assert child.value is not None
+                        alias.append(child.value)
+                    else:
+                        assert False
+                case "VARIABLE__DEC":
+                    children.extend(VariableDescription.from_ast(child))
+                case "STRUCT__DEF":
+                    children.append(StructDescription.from_ast(child))
+                case "UNION__DEF":
+                    children.append(UnionDescription.from_ast(child))
+
+        return cls(name, children, alias)
+
+    def _container_serialize(self, container_keyword: str) -> str:
         members = []
-        for member in self.members:
+        for member in self.children:
             if isinstance(member, VariableDescription):
                 members.append("\t" + member.serialize())
             else:
@@ -108,94 +211,80 @@ class StructDescription(object):
                     "\n".join(["\t" + line for line in member.serialize().split("\n")])
                 )
 
-        serialized = (
-            f"struct {f'{self.alias} ' if self.alias else ''}"
+        return (
+            container_keyword
+            + " "
+            + (f"{self.name} " if self.name is not None else "")
             + "{\n"
             + "\n".join(members)
-            + "\n}"
-            + (f" {self.typedef_alias}" if self.typedef_alias else "")
+            + ("\n" if len(members) else "")
+            + "}"
+            + (" " + " ,".join(self.alias) if len(self.alias) else "")
             + ";"
         )
 
-        return serialized
+
+class UnionDescription(ContainerDescription):
+    _AST_NAME = "UNION__DEF"
+
+    name: Optional[str]
+    children: list
+    alias: list[str]
 
     @classmethod
-    def parse_ast_struct(cls, node: RawASTNode) -> Optional[Self]:
-        assert node.symbol == "STRUCT"
+    def from_ast(cls, node: RawASTNode) -> Self:
+        assert node.symbol == UnionDescription._AST_NAME
+        return cls._container_from_ast(node)
 
-        alias = None
-        typedef_alias = None
-        members: list[UnionDescription | VariableDescription] = []
-
-        if node.children is not None:
-            encountered_curly_brace = False
-            open_curly_brace_cnt = 0
-
-            for child in node.children:
-                match child.symbol:
-                    case "VARIABLE":
-                        var = VariableDescription.parse_ast_variable(child)
-                        if var is not None:
-                            members.append(var)
-                    case "{":
-                        open_curly_brace_cnt += 1
-                        encountered_curly_brace = True
-                    case "}":
-                        open_curly_brace_cnt -= 1
-                    case "IDENTIFIER":
-                        if open_curly_brace_cnt == 0:
-                            if encountered_curly_brace:
-                                typedef_alias = child.value
-                            else:
-                                alias = child.value
-                    case "UNION":
-                        union = UnionDescription.parse_ast_union(child)
-                        if union is not None:
-                            members.append(union)
-                    case _:
-                        continue
-
-        return cls(members, alias, typedef_alias)
+    def serialize(self) -> str:
+        return self._container_serialize("union")
 
 
-def find_structs(path: Path) -> list[StructDescription]:
-    structs = []
-    lexy = StructLexer()
-    for struct in lexy.find_all_structures(path):
-        raw_struct = RawASTNode.resolve_quantized_ast_tree(struct, lexy._language)
-        struct_desc = StructDescription.parse_ast_struct(raw_struct)
-        if struct_desc is not None:
-            structs.append(struct_desc)
-    return structs
+class StructDescription(ContainerDescription):
+    _AST_NAME = "STRUCT__DEF"
+
+    @classmethod
+    def from_ast(cls, node: RawASTNode) -> Self:
+        assert node.symbol == StructDescription._AST_NAME
+        return cls._container_from_ast(node)
+
+    def serialize(self) -> str:
+        return self._container_serialize("struct")
 
 
-"""
-Driver
-"""
+DESCRIPTION_CLASSES: list[Type[Description]] = [
+    VariableDescription,
+    UnionDescription,
+    StructDescription,
+]
+
+
+def description_from_ast(node: RawASTNode) -> Optional[Description | list[Description]]:
+    for desc_class in DESCRIPTION_CLASSES:
+        if desc_class.is_ast_node_of_this_type(node):
+            return desc_class.from_ast(node)
+    return None
+
 
 if __name__ == "__main__":
-    start = time()
-    OUTPUT_PATH = Path(__file__).parent.parent / "lexer" / "lexen.txt"
-    # SAMPLE_PATH = Path(__file__).parent.parent / "lexer" / "apply.c"
-    SAMPLE_PATH = (
-        Path(__file__).parent.parent.parent.parent
-        / "sample/libgit2/src/libgit2"
-        / "attrcache.h"
-    )
+    from pathlib import Path
+    from olive.parse.struct.struct_lexer import StructLexer
+
+    sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/tmp.c")
 
     lexy = StructLexer()
+    res_quant = lexy.parse_file(sample_path)
 
-    results = [
+    res = [
         RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
-        for node in lexy.find_all_structures(SAMPLE_PATH)
+        for node in res_quant
     ]
-    with open(OUTPUT_PATH, "w") as outfile:
-        for node in results:
-            outfile.write(node.serialize_graph() + "\n\n")
-            struct_desc = StructDescription.parse_ast_struct(node)
-            if struct_desc is not None:
-                print(struct_desc.serialize())
 
-    end = time()
-
-    print(f"Duration: {end - start:.2f} Seconds")
+    for node in res_quant:
+        res_deq = RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
+        desc_res = description_from_ast(res_deq)
+        if desc_res is not None:
+            if not isinstance(desc_res, list):
+                desc_res = [desc_res]
+            for d in desc_res:
+                print(d.serialize())

@@ -1,4 +1,4 @@
-from olive.parse.struct.description import (
+from olive.parse.struct.description_dep import (
     StructDescription,
     VariableDescription,
     UnionDescription,
