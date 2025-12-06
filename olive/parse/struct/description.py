@@ -303,7 +303,6 @@ def description_from_ast(node: RawASTNode) -> Optional[Description | list[Descri
 
 
 def find_structs(path: Path) -> list[StructDescription]:
-    print("FINDING STRUCTS")
     structs = []
     lexy = StructLexer()
 

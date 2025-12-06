@@ -77,9 +77,6 @@ class StructLexer(CLexer):
             if start_idx >= 0:
                 content_groupings.append((start_idx, end))
 
-        print("ENUM_GROUPINGS:", enum_groupings)
-        print("GROUPINGS:", content_groupings)
-
         self._utility__consolidate_groups(
             content_groupings, "ENUM_CONTENTS", (True, False)
         )

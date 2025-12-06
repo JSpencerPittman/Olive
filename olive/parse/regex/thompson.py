@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from olive.parse.regex.rules import QuantizedRule
 from olive.parse.regex.language import SpecialSymbols
-from olive.parse.regex.graph import Graph
+from olive.parse.regex.graph import Graph, EMPTY_WEIGHT, ANY_WEIGHT
 from enum import Enum
 
 
@@ -22,6 +22,7 @@ class ThompsonConstructor(object):
         QUANTIFIER_OPTIONAL = 3
         QUANTIFIER_AT_LEAST_ONE = 4
         COMPARISON_OR = 5
+        ANY = 6
 
     @staticmethod
     def construct_rule(rule: QuantizedRule) -> Graph:
@@ -60,6 +61,8 @@ class ThompsonConstructor(object):
                     return ThompsonConstructor.Operation.QUANTIFIER_AT_LEAST_ONE
                 case SpecialSymbols.PIPE:
                     return ThompsonConstructor.Operation.COMPARISON_OR
+                case SpecialSymbols.DOT:
+                    return ThompsonConstructor.Operation.ANY
                 case _:
                     assert False
 
@@ -116,7 +119,7 @@ class ThompsonConstructor(object):
         def hndl_concatenation(terms: list[Term]) -> Term:
             nonlocal graph
             for a, b in zip(terms[:-1], terms[1:]):
-                graph.add_edge(a.end, b.start, -1)
+                graph.add_edge(a.end, b.start, EMPTY_WEIGHT)
             return Term(terms[0].start, terms[-1].end)
 
         def hndl_quantifier_any(terms: list[Term]) -> Term:
@@ -124,12 +127,8 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(
-                start,
-                end,
-                -1,
-            )
-            graph.add_edge(end, start, -1)
+            graph.add_edge(start, end, EMPTY_WEIGHT)
+            graph.add_edge(end, start, EMPTY_WEIGHT)
             return Term(start, end)
 
         def hndl_quantifier_optional(terms: list[Term]) -> Term:
@@ -137,7 +136,7 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(start, end, -1)
+            graph.add_edge(start, end, EMPTY_WEIGHT)
             return Term(start, end)
 
         def hndl_quantifier_at_least_one(terms: list[Term]) -> Term:
@@ -145,7 +144,7 @@ class ThompsonConstructor(object):
             inner_concat = hndl_concatenation(terms)
             start, end = inner_concat.start, inner_concat.end
 
-            graph.add_edge(end, start, -1)
+            graph.add_edge(end, start, EMPTY_WEIGHT)
             return Term(start, end)
 
         def hndl_comparison_or(terms: list[Term]) -> Term:
@@ -154,10 +153,18 @@ class ThompsonConstructor(object):
             end = graph.add_node()
 
             for term in terms:
-                graph.add_edge(start, term.start, -1)
-                graph.add_edge(term.end, end, -1)
+                graph.add_edge(start, term.start, EMPTY_WEIGHT)
+                graph.add_edge(term.end, end, EMPTY_WEIGHT)
 
             return Term(start, end)
+
+        def hndl_any(terms: list[Term]) -> Term:
+            nonlocal graph
+            assert len(terms) == 2
+            start, end = terms
+            graph.add_edge(start.end, start.end, ANY_WEIGHT)
+            graph.add_edge(start.end, end.start, EMPTY_WEIGHT)
+            return Term(start.start, end.end)
 
         operation = what_operation()
         if operation == ThompsonConstructor.Operation.NOT_AN_OPERATION:
@@ -176,5 +183,7 @@ class ThompsonConstructor(object):
                 return hndl_quantifier_at_least_one(terms)
             case ThompsonConstructor.Operation.COMPARISON_OR:
                 return hndl_comparison_or(terms)
+            case ThompsonConstructor.Operation.ANY:
+                return hndl_any(terms)
 
         assert False

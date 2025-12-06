@@ -3,6 +3,10 @@ from typing import Optional
 from copy import copy
 
 
+EMPTY_WEIGHT = -1
+ANY_WEIGHT = -2
+
+
 class Graph(object):
     def __init__(self):
         self._graph = {}
@@ -78,9 +82,6 @@ class GraphTraveler(object):
         self._can_revert = False
 
     def _find_zero_weight_neighborhood(self):
-        def is_empty_edge(weight: int) -> bool:
-            return weight == -1
-
         expansion = copy(set(self._frontier))
         frontier = copy(set(self._frontier))
         explored = set()
@@ -89,7 +90,7 @@ class GraphTraveler(object):
             node = frontier.pop()
             explored.add(node)
             for neighbor, w in self._graph.outgoing_edges(node):
-                if is_empty_edge(w) and neighbor not in explored:
+                if w == EMPTY_WEIGHT and neighbor not in explored:
                     frontier.add(neighbor)
                     expansion.add(neighbor)
 
@@ -97,12 +98,13 @@ class GraphTraveler(object):
 
     def _take_step(self, weight: int):
         expansion = set()
-        explored = set()
+        expansion_any = set()
 
         for node in self._frontier:
-            explored.add(node)
             for neighbor, w in self._graph.outgoing_edges(node):
-                if w == weight and neighbor not in explored:
+                if w == weight:
                     expansion.add(neighbor)
+                if w == ANY_WEIGHT:
+                    expansion_any.add(neighbor)
 
-        self._frontier = expansion
+        self._frontier = expansion if len(expansion) else expansion_any

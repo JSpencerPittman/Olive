@@ -58,9 +58,6 @@ class CLexer(Lexer):
             "CONSOLIDATE-DEFINE-CONTENTS",
             self._special_rule__consolidate_define_contents,
         )
-        self.register_special_rule(
-            "CONSOLIDATE-ARRAY-BRACKETS", self._special_rule__consolidate_array_brackets
-        )
 
     def _special_rule__consolidate_identifiers(self):
         identifier_symbol = self._language.quantize_symbol("IDENTIFIER")
@@ -115,12 +112,6 @@ class CLexer(Lexer):
 
         groups = self._utility__find_groups("DEFINE_START", is_end_func=is_end)
         self._utility__consolidate_groups(groups, "DEFINE_CONSOLIDATED", (False, True))
-
-    def _special_rule__consolidate_array_brackets(self):
-        groups = self._utility__find_groups("[", end_sym="]")
-        self._utility__consolidate_groups(
-            groups, "ARRAY_BRACKET_CONSOLIDATED", (True, True)
-        )
 
     def _special_rule_utility__find_open_close_groups(
         self, start_sym: str, end_sym: str

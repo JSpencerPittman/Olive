@@ -11,6 +11,7 @@ class SpecialSymbols(Enum):
     QUESTION_MARK = (3, "?", "question_mark")
     PLUS_SIGN = (4, "+", "plus_sign")
     PIPE = (5, "|", "pipe")
+    DOT = (6, ".", "dot")
 
     @staticmethod
     def from_symbol(symbol: str | int) -> Optional["SpecialSymbols"]:
