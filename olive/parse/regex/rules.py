@@ -10,6 +10,7 @@ T = TypeVar("T")
 class Rule(ABC, Generic[T]):
     symbol: T
     rule: list[T]
+    inclusive: tuple[bool, bool] = (True, True)
 
     @abstractmethod
     def __repr__(self) -> str: ...
@@ -47,6 +48,13 @@ def parse_rule_from_str(line: str) -> Optional[RawRule | SpecialRule]:
     if len(parts) != 2:
         return None
     symbol, rule = parts[0].strip(), parts[1].strip()
+
+    inclusivity = (True, True)
+    if "(" in symbol:
+        symbol, inc_raw = symbol.split("(")
+        symbol = symbol.split("(")[0]
+        inclusivity = inc_raw[0] == "1", inc_raw[1] == "1"
+
     if not symbol or not rule:
         return None
 
@@ -55,7 +63,7 @@ def parse_rule_from_str(line: str) -> Optional[RawRule | SpecialRule]:
         assert len(rs) > 0
         return SpecialRule(rs[0], [] if len(rs) == 1 else rs[1:])
     else:
-        return RawRule(symbol, rule.split(" "))
+        return RawRule(symbol, rule.split(" "), inclusivity)
 
 
 def load_rules(path: Path) -> list[RawRule | SpecialRule]:

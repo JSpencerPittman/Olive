@@ -61,11 +61,28 @@ class Lexer(object):
     def _run_qt_rule(self, qt_rule: QuantizedRule, rule_graph: Graph):
         traveler = GraphTraveler(rule_graph)
 
-        buffer = []
+        buffer: list[QuantizedASTNode] = []
         processed = []
         finished_idx = -1
         finished_idx_buffer = -1
         idx = 0
+
+        def add_rule_match(buff_idx):
+            nonlocal processed
+            inclusive_start, inclusive_end = qt_rule.inclusive
+            if not inclusive_start:
+                processed.append(buffer[0])
+
+            processed.append(
+                QuantizedASTNode(
+                    qt_rule.symbol,
+                    None,
+                    buffer[int(not inclusive_start) : buff_idx + (inclusive_end)],
+                )
+            )
+
+            if not inclusive_end:
+                processed.append(buffer[buff_idx])
 
         while idx < len(self._data):
             node = self._data[idx]
@@ -79,11 +96,7 @@ class Lexer(object):
                 idx += 1
             else:
                 if finished_idx >= 0:
-                    processed.append(
-                        QuantizedASTNode(
-                            qt_rule.symbol, None, buffer[: finished_idx_buffer + 1]
-                        )
-                    )
+                    add_rule_match(finished_idx_buffer)
                     idx = finished_idx + 1
                     finished_idx = -1
                     finished_idx_buffer = -1
@@ -94,11 +107,7 @@ class Lexer(object):
                 traveler.reset()
 
         if finished_idx >= 0:
-            processed.append(
-                QuantizedASTNode(
-                    qt_rule.symbol, None, buffer[: finished_idx_buffer + 1]
-                )
-            )
+            add_rule_match(finished_idx_buffer)
             processed.extend(self._data[finished_idx + 1 :])
         else:
             processed.extend(buffer)
