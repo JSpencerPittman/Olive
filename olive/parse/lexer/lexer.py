@@ -167,13 +167,13 @@ class Lexer(object):
             e = e if inclusive[1] else e - 1
 
             processed.extend(self._data[last_idx:s])
-            if s + 1 != e:
+            if s <= e:
                 processed.append(
                     QuantizedASTNode(
                         qt_sym,
                         (
                             "".join(
-                                [node.serialize("") for node in self._data[s + 1 : e]]
+                                [node.serialize("") for node in self._data[s : e + 1]]
                             )
                         ).strip(),
                     )

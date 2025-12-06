@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, redirect, session, request
 from pathlib import Path
 from olive.file.file import FileTree
-from olive.parse.struct.description_dep import find_structs
+from olive.parse.struct.description import find_structs
 from app.struct_search.struct_ref import (
     ReferencingStructDescription,
     ReferencingStructDescriptionSet,
@@ -89,6 +89,13 @@ class StructViewManager(object):
 
 
 view_manager = StructViewManager()
+
+# DEBUG-BEGIN
+proj_dir = "/Users/jspencerpittman/Projects/Olive"
+# session["proj-dir"] = proj_dir
+ft = FileTree(Path(proj_dir))
+ft.index_files()
+# DEBUG-END
 
 
 @app.route("/")

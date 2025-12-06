@@ -161,6 +161,14 @@ class StructDescription(object):
 def find_structs(path: Path) -> list[StructDescription]:
     structs = []
     lexy = StructLexer()
+
+    results_qt = lexy.parse_file(path)
+    with open("log__parsed.txt", "w") as ofile:
+        for result in results_qt:
+            RawASTNode.resolve_quantized_ast_tree(result, lexy._language)
+            # ofile.write(result.serialize())
+            ofile.write(result.serialize())
+
     for struct in lexy.find_all_structures(path):
         raw_struct = RawASTNode.resolve_quantized_ast_tree(struct, lexy._language)
         struct_desc = StructDescription.parse_ast_struct(raw_struct)

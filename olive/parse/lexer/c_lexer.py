@@ -21,6 +21,7 @@ C_KEYWORDS = set(
         "for",
         "goto",
         "if",
+        "ifndef",
         "include",
         "inline",
         "register",

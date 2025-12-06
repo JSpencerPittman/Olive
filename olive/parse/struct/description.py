@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
-from olive.parse.lexer.ast import RawASTNode
 from dataclasses import dataclass
-from typing import Optional, Self, Type, ClassVar
+from pathlib import Path
+from typing import ClassVar, Optional, Self, Type
+
+from olive.parse.lexer.ast import RawASTNode
+from olive.parse.struct.struct_lexer import StructLexer
 
 
 class Description(ABC):
@@ -252,22 +255,74 @@ class StructDescription(ContainerDescription):
         return self._container_serialize("struct")
 
 
+@dataclass
+class TypedefReferenceDescription(Description):
+    _AST_NAME: ClassVar[str] = "TYPEDEF__REF"
+    is_struct: bool
+    desc: VariableDescription
+
+    @property
+    def is_union(self) -> bool:
+        return not self.is_struct
+
+    @classmethod
+    def from_ast(cls, node: RawASTNode) -> Self:
+        assert node.symbol == StructDescription._AST_NAME
+        is_struct = node.does_child_exist("KEYWORD_STRUCT")
+        desc_ast = node.get_first_child("VARIABLE__DEC")
+        assert desc_ast is not None
+        desc = VariableDescription.from_ast(desc_ast)
+        return cls(is_struct, desc[0])
+
+    def serialize(self) -> str:
+        return (
+            "typedef "
+            + ("struct " if self.is_struct else "union ")
+            + self.desc.serialize()
+        )
+
+
 DESCRIPTION_CLASSES: list[Type[Description]] = [
     VariableDescription,
     UnionDescription,
     StructDescription,
+    TypedefReferenceDescription,
 ]
 
 
 def description_from_ast(node: RawASTNode) -> Optional[Description | list[Description]]:
+    if node.symbol == "TYPEDEF__DEF":
+        assert node.children is not None
+        node = node.children[1]
+
     for desc_class in DESCRIPTION_CLASSES:
         if desc_class.is_ast_node_of_this_type(node):
             return desc_class.from_ast(node)
+
     return None
+
+
+def find_structs(path: Path) -> list[StructDescription]:
+    print("FINDING STRUCTS")
+    structs = []
+    lexy = StructLexer()
+
+    results_qt = lexy.parse_file(path)
+    with open("log__parsed.txt", "w") as ofile:
+        for result in results_qt:
+            result_raw = RawASTNode.resolve_quantized_ast_tree(result, lexy._language)
+            ofile.write(result_raw.serialize_graph() + "\n\n")
+    # for struct in lexy.find_all_structures(path):
+    #     raw_struct = RawASTNode.resolve_quantized_ast_tree(struct, lexy._language)
+    #     struct_desc = StructDescription.from_ast(raw_struct)
+    #     if struct_desc is not None:
+    #         structs.append(struct_desc)
+    return structs
 
 
 if __name__ == "__main__":
     from pathlib import Path
+
     from olive.parse.struct.struct_lexer import StructLexer
 
     sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/tmp.c")

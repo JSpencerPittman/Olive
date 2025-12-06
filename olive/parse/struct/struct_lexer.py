@@ -60,21 +60,29 @@ class StructLexer(CLexer):
             prev_length = len(self._data)
 
     def _special_rule__consolidate_enum_contents(self):
+        QT_EQUAL = self._language.quantize_symbol("=")
+        QT_COMMA = self._language.quantize_symbol(",")
+
         enum_groupings = self._utility__find_groups("ENUM__START", "}")
-        equal_groupings = self._utility__find_groups(
-            "=", ","
-        ) + self._utility__find_groups("=", "}")
+        content_groupings = []
+        for start, end in enum_groupings:
+            start_idx = -1
+            for idx, node in enumerate(self._data[start:end]):
+                if node.symbol == QT_EQUAL:
+                    start_idx = start + idx
+                elif node.symbol == QT_COMMA:
+                    if start_idx >= 0:
+                        content_groupings.append((start_idx, start + idx))
+                        start_idx = -1
+            if start_idx >= 0:
+                content_groupings.append((start_idx, end))
 
-        def is_nested(sub_group: tuple[int, int], parent_group: tuple[int, int]):
-            return parent_group[0] <= sub_group[0] and sub_group[1] <= parent_group[1]
+        print("ENUM_GROUPINGS:", enum_groupings)
+        print("GROUPINGS:", content_groupings)
 
-        filtered = []
-        for enum_group in enum_groupings:
-            for equal_group in equal_groupings:
-                if is_nested(equal_group, enum_group):
-                    filtered.append(equal_group)
-
-        self._utility__consolidate_groups(filtered, "ENUM_CONTENTS", (True, False))
+        self._utility__consolidate_groups(
+            content_groupings, "ENUM_CONTENTS", (True, False)
+        )
 
 
 if __name__ == "__main__":
