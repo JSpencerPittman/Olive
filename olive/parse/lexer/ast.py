@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Optional, TypeVar, Generic, Self
 from olive.parse.regex.language import Language
 from abc import ABC
-from copy import copy
 
 
 T = TypeVar("T")
@@ -11,6 +10,7 @@ T = TypeVar("T")
 @dataclass
 class ASTNode(ABC, Generic[T]):
     symbol: T
+    lines: tuple[int, int]
     value: Optional[str]
     children: Optional[list[Self]] = None
 
@@ -56,7 +56,7 @@ class RawASTNode(ASTNode[str]):
     ) -> Self:
         raw_sym = language.dequantize_symbol(qt_root.symbol)
         assert raw_sym is not None
-        raw_root = cls(raw_sym, qt_root.value)
+        raw_root = cls(raw_sym, qt_root.lines, qt_root.value)
 
         if qt_root.children is not None:
             raw_root.children = []

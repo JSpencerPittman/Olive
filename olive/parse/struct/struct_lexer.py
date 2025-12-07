@@ -1,6 +1,6 @@
 from olive.parse.lexer.c_lexer import CLexer
 from olive.parse.lexer.ast import QuantizedASTNode
-from olive.parse.regex.rules import parse_rule_from_str
+from olive.parse.regex.rules import parse_rule_from_str, SpecialRule
 from olive.parse.regex.thompson import ThompsonConstructor
 from typing import ClassVar
 from pathlib import Path
@@ -29,7 +29,7 @@ class StructLexer(CLexer):
 
         return struct_nodes
 
-    def _special_rule__capture_nested_defs(self):
+    def _special_rule__capture_nested_defs(self, rule: SpecialRule):
         nesting_capture_rule_str__union = (
             "UNION__DEF := KEYWORD__UNION ( IDENTIFIER ) ? { ( ( "
             "VARIABLE__DEC UNION__DEF STRUCT__DEF ) | ) * } ( IDENTIFIER ) ? ;"
@@ -51,23 +51,25 @@ class StructLexer(CLexer):
         rule_graph__struct = ThompsonConstructor.construct_rule(qt_rule__struct)
 
         # Keep looping until no more nested definitions are captured
-        prev_length = len(self._data)
+        buffer = self._repo.load(rule)
+        prev_length = len(buffer)
         while True:
             self._run_qt_rule(qt_rule__union, rule_graph__union)
             self._run_qt_rule(qt_rule__struct, rule_graph__struct)
-            if len(self._data) == prev_length:
+            if len(buffer) == prev_length:
                 break
-            prev_length = len(self._data)
+            prev_length = len(buffer)
 
-    def _special_rule__consolidate_enum_contents(self):
+    def _special_rule__consolidate_enum_contents(self, rule: SpecialRule):
         QT_EQUAL = self._language.quantize_symbol("=")
         QT_COMMA = self._language.quantize_symbol(",")
 
-        enum_groupings = self._utility__find_groups("ENUM__START", "}")
+        buffer = self._repo.load(rule)
+        enum_groupings = self._utility__find_groups(rule, "ENUM__START", "}")
         content_groupings = []
         for start, end in enum_groupings:
             start_idx = -1
-            for idx, node in enumerate(self._data[start:end]):
+            for idx, node in enumerate(buffer[start:end]):
                 if node.symbol == QT_EQUAL:
                     start_idx = start + idx
                 elif node.symbol == QT_COMMA:
@@ -78,26 +80,5 @@ class StructLexer(CLexer):
                 content_groupings.append((start_idx, end))
 
         self._utility__consolidate_groups(
-            content_groupings, "ENUM_CONTENTS", (True, False)
+            rule, content_groupings, "ENUM_CONTENTS", (True, False)
         )
-
-
-if __name__ == "__main__":
-    sample_path = Path("/Users/jspencerpittman/Projects/Olive/sample/tmp.c")
-
-    lexy = StructLexer()
-    # res_quant = lexy.find_all_structures(sample_path)
-    res_quant = lexy.parse_file(sample_path)
-    from olive.parse.lexer.ast import RawASTNode
-    from olive.parse.struct.description_dep import StructDescription
-
-    res = [
-        RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
-        for node in res_quant
-    ]
-
-    for node in res_quant:
-        res = RawASTNode.resolve_quantized_ast_tree(node, lexy._language)
-        print(res.serialize_graph())
-        # desc = StructDescription.parse_ast_struct(res)
-        # print(desc.serialize())

@@ -1,6 +1,7 @@
 from olive.parse.lexer.lexer import Lexer
 from olive.parse.lexer.ast import QuantizedASTNode
 from olive.parse.regex.language import Language
+from olive.parse.regex.rules import SpecialRule
 from typing import ClassVar
 from pathlib import Path
 
@@ -59,41 +60,46 @@ class CLexer(Lexer):
             self._special_rule__consolidate_define_contents,
         )
 
-    def _special_rule__consolidate_identifiers(self):
+    def _special_rule__consolidate_identifiers(self, rule: SpecialRule):
         identifier_symbol = self._language.quantize_symbol("IDENTIFIER")
 
-        for idx in range(len(self._data)):
-            node = self._data[idx]
+        buffer = self._repo.load(rule)
+        for idx in range(len(buffer)):
+            node = buffer[idx]
             if node.symbol == identifier_symbol:
-                self._data[idx] = QuantizedASTNode(
-                    node.symbol, node.serialize(""), None
+                buffer[idx] = QuantizedASTNode(
+                    node.symbol, node.lines, node.serialize(""), None
                 )
+        self._repo.save(rule, buffer)
 
-    def _special_rule__resolve_keywords(self):
+    def _special_rule__resolve_keywords(self, rule: SpecialRule):
         identifier_symbol = self._language.quantize_symbol("IDENTIFIER")
 
-        for idx in range(len(self._data)):
-            node = self._data[idx]
+        buffer = self._repo.load(rule)
+        for idx in range(len(buffer)):
+            node = buffer[idx]
             if node.symbol == identifier_symbol and node.value in C_KEYWORDS:
                 symbol = f"KEYWORD__{node.value.upper()}"
-                symbol = self._language.quantize_symbol(symbol)
-                self._data[idx] = QuantizedASTNode(symbol, node.value, None)
+                qt_symbol = self._language.quantize_symbol(symbol)
+                buffer[idx] = QuantizedASTNode(qt_symbol, node.lines, node.value, None)
+        self._repo.save(rule, buffer)
 
-    def _special_rule__purge_comments(self):
+    def _special_rule__purge_comments(self, rule: SpecialRule):
         groupings = self._special_rule_utility__find_open_close_groups(
-            "COMMENT_MULTI_START", "COMMENT_MULTI_END"
+            rule, "COMMENT_MULTI_START", "COMMENT_MULTI_END"
         )
 
         last_idx = 0
         processed = []
+        buffer = self._repo.load(rule)
         for s, e in groupings:
-            processed.extend(self._data[last_idx:s])
+            processed.extend(buffer[last_idx:s])
             last_idx = e + 1
-        processed.extend(self._data[last_idx:])
+        processed.extend(buffer[last_idx:])
 
-        self._data = processed
+        self._repo.save(rule, processed)
 
-    def _special_rule__consolidate_define_contents(self):
+    def _special_rule__consolidate_define_contents(self, rule: SpecialRule):
         def is_end(symbol: int, state: dict, language: Language) -> tuple[bool, dict]:
             if len(state.keys()) == 0:
                 state["QT_LINE_EXTENSION"] = language.quantize_symbol("\\")
@@ -110,11 +116,13 @@ class CLexer(Lexer):
 
             return status, state
 
-        groups = self._utility__find_groups("DEFINE_START", is_end_func=is_end)
-        self._utility__consolidate_groups(groups, "DEFINE_CONSOLIDATED", (False, True))
+        groups = self._utility__find_groups(rule, "DEFINE_START", is_end_func=is_end)
+        self._utility__consolidate_groups(
+            rule, groups, "DEFINE_CONSOLIDATED", (False, True)
+        )
 
     def _special_rule_utility__find_open_close_groups(
-        self, start_sym: str, end_sym: str
+        self, rule: SpecialRule, start_sym: str, end_sym: str
     ) -> list[tuple[int, int]]:
         groupings = []
         start_idx = -1
@@ -122,7 +130,7 @@ class CLexer(Lexer):
         start_symbol = self._language.quantize_symbol(start_sym)
         end_symbol = self._language.quantize_symbol(end_sym)
 
-        for idx, node in enumerate(self._data):
+        for idx, node in enumerate(self._repo.load(rule)):
             if node.symbol == start_symbol:
                 start_idx = idx
             elif node.symbol == end_symbol and start_idx >= 0:

@@ -75,7 +75,7 @@ class Language(object):
             rule.options,
         )
 
-    def quantize_symbol(self, symbol: str):
+    def quantize_symbol(self, symbol: str) -> int:
         if symbol.isspace():
             symbol = "LINEBREAK" if symbol == "\n" else "WHITESPACE"
         if symbol not in self._quantized_symbols:

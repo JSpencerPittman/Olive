@@ -11,15 +11,13 @@ Rule Options
 @dataclass
 class RuleOptions(object):
     inclusive: tuple[bool, bool] = (True, True)
-    cache: bool = False
+    save: str = "master"
+    load: str = "master"
 
     @classmethod
     def parse(cls, symbol: str) -> tuple[str, Self]:
         def parse_inclusive(value: str) -> tuple[bool, bool]:
             return value[0] == "1", value[1] == "1"
-
-        def parse_cache(value: str) -> bool:
-            return value == "1"
 
         if "(" not in symbol:
             return symbol, cls()
@@ -29,17 +27,20 @@ class RuleOptions(object):
 
         # Defaults
         inclusive = (True, True)
-        cache = True
+        save = "master"
+        load = "master"
 
         for option_raw in options_raw_list:
             name, value = [v.strip() for v in option_raw.split("=")]
             match name:
                 case "inclusive":
                     inclusive = parse_inclusive(value)
-                case "cache":
-                    cache = parse_cache(value)
+                case "save":
+                    save = value
+                case "load":
+                    load = value
 
-        return symbol, cls(inclusive, cache)
+        return symbol, cls(inclusive, save, load)
 
 
 T = TypeVar("T")
@@ -82,7 +83,7 @@ class QuantizedRule(Rule[int]):
         return f"{self.symbol} := {self.rule}"
 
 
-def parse_rule_from_str(line: str) -> Optional[RawRule | SpecialRule]:
+def parse_rule_from_str(line: str) -> Optional[Rule]:
     parts = line.split(":=")
     if len(parts) != 2:
         return None
@@ -100,8 +101,8 @@ def parse_rule_from_str(line: str) -> Optional[RawRule | SpecialRule]:
         return RawRule(symbol, rule.split(" "), options)
 
 
-def load_rules(path: Path) -> list[RawRule | SpecialRule]:
-    rules = []
+def load_rules(path: Path) -> list[Rule]:
+    rules: list[Rule] = []
     with open(path, "r") as infile:
         for line in infile.readlines():
             parsed_rule = parse_rule_from_str(line)
