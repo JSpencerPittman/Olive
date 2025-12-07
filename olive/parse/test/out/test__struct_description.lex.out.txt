@@ -1,0 +1,112 @@
+STRUCT__DEF
+	KEYWORD__STRUCT: struct
+	IDENTIFIER: name1
+	{: {
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: int
+				IDENTIFIER: x
+			;: ;
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: type2
+				IDENTIFIER: v
+			;: ;
+	}: }
+	IDENTIFIER: alias
+	;: ;
+
+STRUCT__DEF
+	KEYWORD__STRUCT: struct
+	IDENTIFIER: name2
+	{: {
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: int
+				IDENTIFIER: y
+			;: ;
+	}: }
+	;: ;
+
+STRUCT__DEF
+	KEYWORD__STRUCT: struct
+	{: {
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: int
+				IDENTIFIER: y
+			;: ;
+	}: }
+	;: ;
+
+STRUCT__DEF
+	KEYWORD__STRUCT: struct
+	{: {
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: int
+				IDENTIFIER: y
+			;: ;
+	UNION__DEF
+		KEYWORD__UNION: union
+		IDENTIFIER: alpha
+		{: {
+		VARIABLE__DEC
+			VARIABLE__SEMICOLON_TERM
+				VARIABLE__INCOMPLETE
+					IDENTIFIER: int
+					*: *
+					*: *
+					IDENTIFIER: x
+				;: ;
+		}: }
+		;: ;
+	}: }
+	;: ;
+
+STRUCT__DEF
+	KEYWORD__STRUCT: struct
+	{: {
+	VARIABLE__DEC
+		VARIABLE__SEMICOLON_TERM
+			VARIABLE__INCOMPLETE
+				IDENTIFIER: int
+				IDENTIFIER: y
+			;: ;
+	STRUCT__DEF
+		KEYWORD__STRUCT: struct
+		IDENTIFIER: alpha
+		{: {
+		VARIABLE__DEC
+			VARIABLE__SEMICOLON_TERM
+				VARIABLE__INCOMPLETE
+					IDENTIFIER: int
+					*: *
+					*: *
+					IDENTIFIER: x
+				;: ;
+		}: }
+		;: ;
+	}: }
+	;: ;
+
+TYPEDEF__DEF
+	KEYWORD__TYPEDEF: typedef
+	STRUCT__DEF
+		KEYWORD__STRUCT: struct
+		{: {
+		VARIABLE__DEC
+			VARIABLE__SEMICOLON_TERM
+				VARIABLE__INCOMPLETE
+					IDENTIFIER: int
+					IDENTIFIER: y
+				;: ;
+		}: }
+		IDENTIFIER: apple
+		;: ;
+

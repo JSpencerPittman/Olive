@@ -1,0 +1,4 @@
+typedef int apple;
+
+typedef struct apple apple;
+

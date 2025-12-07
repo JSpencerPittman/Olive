@@ -1,0 +1,31 @@
+struct name1 {
+	int x;
+	type2 v;
+} alias;
+
+struct name2 {
+	int y;
+};
+
+struct {
+	int y;
+};
+
+struct {
+	int y;
+	union alpha {
+		int ** x;
+	};
+};
+
+struct {
+	int y;
+	struct alpha {
+		int ** x;
+	};
+};
+
+typedef struct {
+	int y;
+} apple;
+

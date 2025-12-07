@@ -1,0 +1,16 @@
+int x;
+
+static int x;
+
+const int x;
+
+struct int x;
+
+int ** x;
+
+int x[20];
+
+struct alpha ** bravo[200*x+3];
+
+typedef int x;
+

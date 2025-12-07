@@ -9,6 +9,7 @@ from olive.parse.struct.struct_lexer import StructLexer
 
 class Description(ABC):
     _AST_NAME: ClassVar[str] = ""
+    is_typedef: bool = False
 
     @abstractmethod
     def serialize(self) -> str: ...
@@ -37,7 +38,8 @@ class VariableDescription(Description):
 
     def serialize(self) -> str:
         return (
-            ("static " if self.is_static else "")
+            ("typedef " if self.is_typedef else "")
+            + ("static " if self.is_static else "")
             + ("const " if self.is_const else "")
             + ("struct " if self.is_struct else "")
             + ("unsigned " if self.is_unsigned else "")
@@ -45,7 +47,7 @@ class VariableDescription(Description):
             + " "
             + (f"{'*' * self.pointer_degree} " if self.pointer_degree > 0 else "")
             + self.name
-            + (f"[{self.array_contents}]" if self.array_contents is not None else "")
+            + (self.array_contents if self.array_contents is not None else "")
             + ";"
         )
 
@@ -79,7 +81,7 @@ class VariableDescription(Description):
 
             # Array Contents
             child = node.get_first_child("ARRAY_BRACKET_CONSOLIDATED")
-            array_contents = None if child is None else child.value
+            array_contents = None if child is None else child.serialize("")
 
             return cls(
                 is_static,
@@ -215,7 +217,8 @@ class ContainerDescription(Description):
                 )
 
         return (
-            container_keyword
+            ("typedef " if self.is_typedef else "")
+            + container_keyword
             + " "
             + (f"{self.name} " if self.name is not None else "")
             + "{\n"
@@ -291,13 +294,21 @@ DESCRIPTION_CLASSES: list[Type[Description]] = [
 
 
 def description_from_ast(node: RawASTNode) -> Optional[Description | list[Description]]:
+    is_typedef = False
     if node.symbol == "TYPEDEF__DEF":
         assert node.children is not None
         node = node.children[1]
+        is_typedef = True
 
     for desc_class in DESCRIPTION_CLASSES:
         if desc_class.is_ast_node_of_this_type(node):
-            return desc_class.from_ast(node)
+            result = desc_class.from_ast(node)
+            if isinstance(result, Description) and is_typedef:
+                result.is_typedef = True
+            elif isinstance(result, list) and is_typedef:
+                for r in result:
+                    r.is_typedef = True
+            return result
 
     return None
 
