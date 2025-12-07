@@ -69,7 +69,7 @@ class Lexer(object):
 
         def add_rule_match(buff_idx):
             nonlocal processed
-            inclusive_start, inclusive_end = qt_rule.inclusive
+            inclusive_start, inclusive_end = qt_rule.options.inclusive
             if not inclusive_start:
                 processed.append(buffer[0])
 

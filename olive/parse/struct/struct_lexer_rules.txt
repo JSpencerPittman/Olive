@@ -4,7 +4,7 @@ STRUCT__DEF := KEYWORD__STRUCT ( IDENTIFIER ) ? { ( ( VARIABLE__DEC ) | ) * } ( 
 SPECIAL-RULE := CAPTURE-NESTED-DEFS
 
 # Enums
-ASSIGNMENT(10) := ( = ( , } ) | ) .
+ASSIGNMENT(inclusive=10) := ( = ( , } ) | ) .
 ENUM__DEF := KEYWORD__ENUM ( IDENTIFIER ) ? { ( IDENTIFIER ( ASSIGNMENT ) ? , ) * IDENTIFIER ( ASSIGNMENT ) ? } ( IDENTIFIER ) ? ;
 
 # Typedef

@@ -72,7 +72,7 @@ class Language(object):
         return QuantizedRule(
             quantize_rule_symbol(rule.symbol),
             [quantize_rule_symbol(symbol) for symbol in rule.rule],
-            rule.inclusive,
+            rule.options,
         )
 
     def quantize_symbol(self, symbol: str):
